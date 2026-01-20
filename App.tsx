@@ -1,14 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
-import { Sidebar } from './components/Sidebar';
-import { Dashboard } from './components/Dashboard';
-import { LegalCases } from './components/LegalCases';
-import { AITools } from './components/AITools';
-import { Finance } from './components/Finance';
-import { Clients } from './components/Clients';
-import { Theses } from './components/Theses';
-import { AreaDireito, CustomFieldConfig } from './types';
-import { DataProvider, useData } from './contexts/DataContext';
+import { Sidebar } from './components/Sidebar.tsx';
+import { Dashboard } from './components/Dashboard.tsx';
+import { LegalCases } from './components/LegalCases.tsx';
+import { AITools } from './components/AITools.tsx';
+import { Finance } from './components/Finance.tsx';
+import { Clients } from './components/Clients.tsx';
+import { Theses } from './components/Theses.tsx';
+import { AreaDireito, CustomFieldConfig } from './types.ts';
+import { DataProvider, useData } from './contexts/DataContext.tsx';
 
 // Icons for placeholders
 import { Settings, Database, Trash2, Sparkles, RefreshCcw, AlertTriangle } from 'lucide-react';

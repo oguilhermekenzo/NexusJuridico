@@ -1,9 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Search, Filter, FolderOpen, Calendar, User, FileText, Settings, Clock, AlertTriangle, Hammer, Trash2, X, Briefcase, ChevronDown, Check, DollarSign, Hash, AlignLeft, Scale, History, MapPin, Link as LinkIcon, AlertCircle, ExternalLink, Percent, TrendingUp, TrendingDown, Wallet, ShieldAlert, Edit2, List, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Processo, ProcessoStatus, AreaDireito, CustomFieldConfig, Andamento, Prazo, Audiencia, TransacaoProcesso } from '../types';
-import { useData } from '../contexts/DataContext';
-import { CustomDatePicker } from './CustomDatePicker';
+import { Processo, ProcessoStatus, AreaDireito, CustomFieldConfig, Andamento, Prazo, Audiencia, TransacaoProcesso } from '../types.ts';
+import { useData } from '../contexts/DataContext.tsx';
 
 // --- COMPONENTS HELPER: CUSTOM DROPDOWN ---
 interface CustomDropdownProps {
@@ -228,7 +227,6 @@ export const LegalCases: React.FC<{ customFields: CustomFieldConfig[] }> = ({ cu
               </div>
               
               <div className="pt-4 border-t border-slate-800 flex justify-between items-center">
-                 {/* // Corrected ProcessStatus to ProcessoStatus as defined in types.ts */}
                  <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${processo.status === ProcessoStatus.ATIVO ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>{processo.status}</span>
                  <span className="text-[11px] text-slate-300 font-bold">R$ {processo.valorCausa?.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
               </div>
