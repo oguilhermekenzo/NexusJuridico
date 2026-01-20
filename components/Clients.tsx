@@ -1,17 +1,18 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Plus, User, Building2, MapPin, Mail, Phone, Edit2, Trash2, LayoutGrid, List, ChevronLeft, ChevronRight, X, ChevronDown, Check, CreditCard, Users, Briefcase, CheckCircle2, Filter, Circle } from 'lucide-react';
+import { Search, Plus, User, Building2, MapPin, Mail, Phone, Edit2, Trash2, LayoutGrid, List, ChevronLeft, ChevronRight, X, ChevronDown, Check, CreditCard, Users, Briefcase, CheckCircle2, Filter, Circle, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { Cliente, ContatoAssociado } from '../types';
 
 // --- COMPONENTS HELPER: CUSTOM DROPDOWN ---
 interface CustomDropdownProps {
-  label?: string; // Made optional
+  label?: string;
   value: string;
   options: { value: string; label: string; icon?: React.ReactNode; colorClass?: string }[];
   onChange: (value: string) => void;
-  compact?: boolean; // New prop for filter bar sizing
+  compact?: boolean;
   className?: string;
-  error?: string; // Validation
+  error?: string;
 }
 
 const CustomDropdown: React.FC<CustomDropdownProps> = ({ label, value, options, onChange, compact = false, className = '', error }) => {
@@ -84,7 +85,7 @@ interface InputWithIconProps extends React.InputHTMLAttributes<HTMLInputElement>
   label: string;
   icon: React.ElementType;
   rightElement?: React.ReactNode;
-  error?: string; // Validation Error
+  error?: string;
 }
 
 const InputWithIcon: React.FC<InputWithIconProps> = ({ label, icon: Icon, rightElement, className, error, ...props }) => (
@@ -96,7 +97,7 @@ const InputWithIcon: React.FC<InputWithIconProps> = ({ label, icon: Icon, rightE
       </div>
       <input
         {...props}
-        onWheel={(e) => e.currentTarget.type === 'number' && e.currentTarget.blur()} // Prevent scroll value change
+        onWheel={(e) => e.currentTarget.type === 'number' && e.currentTarget.blur()}
         className={`w-full bg-slate-950 text-slate-200 border pl-12 pr-4 py-3.5 rounded-xl outline-none transition-all placeholder-slate-600 text-sm
           ${error 
             ? 'border-red-500 focus:ring-2 focus:ring-red-500/20' 
@@ -112,8 +113,6 @@ const InputWithIcon: React.FC<InputWithIconProps> = ({ label, icon: Icon, rightE
     {error && <p className="text-red-500 text-xs mt-1 ml-1 font-medium animate-fade-in">{error}</p>}
   </div>
 );
-
-// --- MAIN COMPONENT ---
 
 export const Clients: React.FC = () => {
   const { clients, cases, addClient, updateClient, deleteClient } = useData();
@@ -131,8 +130,11 @@ export const Clients: React.FC = () => {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Partial<Cliente>>({});
-  const [errors, setErrors] = useState<Record<string, string>>({}); // Errors state
+  const [errors, setErrors] = useState<Record<string, string>>({});
   
+  // Custom Confirmation Modal
+  const [confirmDeleteModal, setConfirmDeleteModal] = useState<{ isOpen: boolean; clientId: string | null; isProhibited: boolean }>({ isOpen: false, clientId: null, isProhibited: false });
+
   // Contact Expanded State for PJ
   const [expandedContactId, setExpandedContactId] = useState<string | null>(null);
 
@@ -143,7 +145,6 @@ export const Clients: React.FC = () => {
                           c.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'all' || c.tipo === filterType;
     const matchesStatus = filterStatus === 'all' || c.status === filterStatus;
-    
     return matchesSearch && matchesType && matchesStatus;
   });
 
@@ -159,7 +160,7 @@ export const Clients: React.FC = () => {
       setEditingClient(client);
     } else {
       setEditingClient({
-        tipo: 'PF', // Default start as PF
+        tipo: 'PF',
         status: 'Ativo',
         nome: '',
         documento: '',
@@ -193,19 +194,24 @@ export const Clients: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  const handleDelete = (e: React.MouseEvent, id: string) => {
+  const handleInitiateDelete = (e: React.MouseEvent, clientId: string) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const associatedCases = cases.filter(c => c.clienteId === id);
-    let confirmationMessage = "Tem certeza que deseja excluir este cliente?";
-
-    if (associatedCases.length > 0) {
-      confirmationMessage = `ALERTA: Este cliente possui ${associatedCases.length} processo(s) associado(s). Excluir o cliente NÃO excluirá os processos. Deseja continuar?`;
+    // Trava de segurança: Proibir excluir clientes com processos
+    const hasProcesses = cases.some(c => c.clienteId === clientId);
+    
+    if (hasProcesses) {
+      setConfirmDeleteModal({ isOpen: true, clientId, isProhibited: true });
+    } else {
+      setConfirmDeleteModal({ isOpen: true, clientId, isProhibited: false });
     }
+  };
 
-    if(confirm(confirmationMessage)) {
-      deleteClient(id);
+  const executeDelete = () => {
+    if (confirmDeleteModal.clientId) {
+      deleteClient(confirmDeleteModal.clientId);
+      setConfirmDeleteModal({ isOpen: false, clientId: null, isProhibited: false });
     }
   };
 
@@ -235,9 +241,7 @@ export const Clients: React.FC = () => {
 
   const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/\D/g, '');
-    // Auto-detect type based on length (12 digits starts CNPJ)
     const newType = rawValue.length > 11 ? 'PJ' : 'PF';
-    
     setEditingClient({ 
       ...editingClient, 
       documento: formatCPFCNPJ(e.target.value),
@@ -249,34 +253,19 @@ export const Clients: React.FC = () => {
     setEditingClient({ ...editingClient, telefone: formatPhone(e.target.value) });
   };
 
-  // Contacts Logic
   const handleAddContact = () => {
-    // Generate a more robust ID to avoid collisions
     const newId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-    const newContact: ContatoAssociado = {
-      id: newId,
-      nome: '',
-      cargo: '',
-      email: '',
-      telefone: ''
-    };
+    const newContact: ContatoAssociado = { id: newId, nome: '', cargo: '', email: '', telefone: '' };
     setEditingClient(prev => ({
       ...prev,
       contatos: [...(prev.contatos || []), newContact]
     }));
-    setExpandedContactId(newId); // Auto-expand new contact
+    setExpandedContactId(newId);
   };
 
   const handleRemoveContact = (e: React.MouseEvent, id: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (confirm("Remover este contato?")) {
-      if (expandedContactId === id) setExpandedContactId(null);
-      setEditingClient(prev => ({
-        ...prev,
-        contatos: prev.contatos?.filter(c => c.id !== id)
-      }));
-    }
+    e.preventDefault(); e.stopPropagation();
+    setEditingClient(prev => ({ ...prev, contatos: prev.contatos?.filter(c => c.id !== id) }));
   };
 
   const handleContactChange = (id: string, field: keyof ContatoAssociado, value: string) => {
@@ -286,7 +275,6 @@ export const Clients: React.FC = () => {
     }));
   };
 
-  // Stats
   const totalActive = clients.filter(c => c.status === 'Ativo').length;
   const totalPF = clients.filter(c => c.tipo === 'PF').length;
   const totalPJ = clients.filter(c => c.tipo === 'PJ').length;
@@ -300,35 +288,13 @@ export const Clients: React.FC = () => {
         </div>
         <div className="flex gap-2">
             <div className="hidden md:flex bg-slate-900 border border-slate-800 rounded-lg p-1">
-                <button 
-                  onClick={() => setViewMode('table')}
-                  className={`p-2 rounded ${viewMode === 'table' ? 'bg-slate-800 text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
-                  title="Visualização em Lista"
-                  type="button"
-                >
-                    <List size={20} />
-                </button>
-                <button 
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded ${viewMode === 'grid' ? 'bg-slate-800 text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
-                  title="Visualização em Grade"
-                  type="button"
-                >
-                    <LayoutGrid size={20} />
-                </button>
+                <button onClick={() => setViewMode('table')} className={`p-2 rounded ${viewMode === 'table' ? 'bg-slate-800 text-blue-400' : 'text-slate-500 hover:text-slate-300'}`} type="button"><List size={20} /></button>
+                <button onClick={() => setViewMode('grid')} className={`p-2 rounded ${viewMode === 'grid' ? 'bg-slate-800 text-blue-400' : 'text-slate-500 hover:text-slate-300'}`} type="button"><LayoutGrid size={20} /></button>
             </div>
-            <button 
-            onClick={() => handleOpenModal()}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-lg shadow-blue-900/30"
-            type="button"
-            >
-            <Plus size={18} />
-            Novo Cliente
-            </button>
+            <button onClick={() => handleOpenModal()} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-lg shadow-blue-900/30" type="button"><Plus size={18} /> Novo Cliente</button>
         </div>
       </div>
 
-      {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-sm">
             <span className="text-slate-500 text-xs font-semibold uppercase">Total de Clientes</span>
@@ -348,55 +314,26 @@ export const Clients: React.FC = () => {
          </div>
       </div>
 
-      {/* Filters Bar */}
       <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col md:flex-row gap-4 items-center">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-          <input 
-            type="text"
-            placeholder="Buscar por nome, CPF/CNPJ ou email..."
-            className="w-full bg-slate-950 pl-10 pr-4 py-2.5 border border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm text-slate-200 placeholder-slate-600"
-            value={searchTerm}
-            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-          />
+          <input type="text" placeholder="Buscar por nome, CPF/CNPJ ou email..." className="w-full bg-slate-950 pl-10 pr-4 py-2.5 border border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm text-slate-200 placeholder-slate-600" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} />
         </div>
         <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
             <div className="min-w-[180px]">
-              <CustomDropdown 
-                compact
-                value={filterType}
-                onChange={(val) => { setFilterType(val as any); setCurrentPage(1); }}
-                options={[
-                  { value: 'all', label: 'Todos os Tipos', icon: <Users size={16} /> },
-                  { value: 'PF', label: 'Pessoa Física', icon: <User size={16} /> },
-                  { value: 'PJ', label: 'Pessoa Jurídica', icon: <Building2 size={16} /> }
-                ]}
-              />
+              <CustomDropdown compact value={filterType} onChange={(val) => { setFilterType(val as any); setCurrentPage(1); }} options={[{ value: 'all', label: 'Todos os Tipos', icon: <Users size={16} /> }, { value: 'PF', label: 'Pessoa Física', icon: <User size={16} /> }, { value: 'PJ', label: 'Pessoa Jurídica', icon: <Building2 size={16} /> }]} />
             </div>
             <div className="min-w-[180px]">
-              <CustomDropdown 
-                compact
-                value={filterStatus}
-                onChange={(val) => { setFilterStatus(val as any); setCurrentPage(1); }}
-                options={[
-                  { value: 'all', label: 'Todos Status', icon: <Filter size={16} /> },
-                  { value: 'Ativo', label: 'Ativos', icon: <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></div> },
-                  { value: 'Inativo', label: 'Inativos', icon: <div className="w-2.5 h-2.5 rounded-full bg-slate-500"></div> }
-                ]}
-              />
+              <CustomDropdown compact value={filterStatus} onChange={(val) => { setFilterStatus(val as any); setCurrentPage(1); }} options={[{ value: 'all', label: 'Todos Status', icon: <Filter size={16} /> }, { value: 'Ativo', label: 'Ativos', icon: <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div> }, { value: 'Inativo', label: 'Inativos', icon: <div className="w-2.5 h-2.5 rounded-full bg-slate-500"></div> }]} />
             </div>
         </div>
       </div>
 
-      {/* Content */}
       <div className="min-h-[400px]">
         {filteredClients.length === 0 ? (
            <div className="text-center py-20 bg-slate-900 rounded-xl border border-dashed border-slate-800">
-             <div className="mx-auto w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-4 text-slate-500">
-               <User size={32} />
-             </div>
+             <div className="mx-auto w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-4 text-slate-500"><User size={32} /></div>
              <h3 className="text-lg font-medium text-slate-300">Nenhum cliente encontrado</h3>
-             <p className="text-slate-500">Tente ajustar os filtros de busca.</p>
            </div>
         ) : (
             <>
@@ -408,7 +345,6 @@ export const Clients: React.FC = () => {
                                     <tr className="bg-slate-950 border-b border-slate-800 text-xs uppercase text-slate-500 font-semibold">
                                         <th className="p-4">Cliente</th>
                                         <th className="p-4">Documento</th>
-                                        <th className="p-4">Contato</th>
                                         <th className="p-4">Cidade</th>
                                         <th className="p-4">Status</th>
                                         <th className="p-4 text-right">Ações</th>
@@ -419,39 +355,17 @@ export const Clients: React.FC = () => {
                                         <tr key={client.id} className="hover:bg-slate-800/50 transition-colors">
                                             <td className="p-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs
-                                                        ${client.tipo === 'PJ' ? 'bg-indigo-600' : 'bg-emerald-600'}`}>
-                                                        {client.tipo === 'PJ' ? <Building2 size={14} /> : <User size={14} />}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-semibold text-slate-200 text-sm">{client.nome}</p>
-                                                        <span className="text-xs text-slate-500">{client.tipo}</span>
-                                                    </div>
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs ${client.tipo === 'PJ' ? 'bg-indigo-600' : 'bg-emerald-600'}`}>{client.tipo === 'PJ' ? <Building2 size={14} /> : <User size={14} />}</div>
+                                                    <div><p className="font-semibold text-slate-200 text-sm">{client.nome}</p><span className="text-xs text-slate-500">{client.tipo}</span></div>
                                                 </div>
                                             </td>
                                             <td className="p-4 text-sm text-slate-400 font-mono">{client.documento}</td>
-                                            <td className="p-4">
-                                                <div className="text-sm text-slate-400 flex flex-col">
-                                                    <span className="flex items-center gap-1"><Mail size={12}/> {client.email}</span>
-                                                    <span className="flex items-center gap-1 text-slate-500"><Phone size={12}/> {client.telefone}</span>
-                                                </div>
-                                            </td>
                                             <td className="p-4 text-sm text-slate-400">{client.cidade}</td>
-                                            <td className="p-4">
-                                                <span className={`text-xs px-2 py-1 rounded font-medium border ${
-                                                    client.status === 'Ativo' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-slate-800 text-slate-400 border-slate-700'
-                                                }`}>
-                                                    {client.status}
-                                                </span>
-                                            </td>
+                                            <td className="p-4"><span className={`text-xs px-2 py-1 rounded font-medium border ${client.status === 'Ativo' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>{client.status}</span></td>
                                             <td className="p-4 text-right">
                                                 <div className="flex justify-end gap-2">
-                                                    <button type="button" onClick={() => handleOpenModal(client)} className="p-1.5 text-slate-500 hover:text-blue-400 rounded hover:bg-slate-800 transition-colors">
-                                                        <Edit2 size={16} />
-                                                    </button>
-                                                    <button type="button" onClick={(e) => handleDelete(e, client.id)} className="p-1.5 text-slate-500 hover:text-red-400 rounded hover:bg-slate-800 transition-colors">
-                                                        <Trash2 size={16} />
-                                                    </button>
+                                                    <button type="button" onClick={() => handleOpenModal(client)} className="p-1.5 text-slate-500 hover:text-blue-400 rounded hover:bg-slate-800 transition-colors"><Edit2 size={16} /></button>
+                                                    <button type="button" onClick={(e) => handleInitiateDelete(e, client.id)} className="p-1.5 text-slate-500 hover:text-red-400 rounded hover:bg-slate-800 transition-colors"><Trash2 size={16} /></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -466,84 +380,70 @@ export const Clients: React.FC = () => {
                             <div key={client.id} className="bg-slate-900 rounded-xl border border-slate-800 p-5 shadow-sm hover:shadow-md transition-shadow group">
                                 <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white
-                                    ${client.tipo === 'PJ' ? 'bg-indigo-600' : 'bg-emerald-600'}`}>
-                                    {client.tipo === 'PJ' ? <Building2 size={20} /> : <User size={20} />}
-                                    </div>
-                                    <div>
-                                    <h3 className="font-bold text-slate-200">{client.nome}</h3>
-                                    <p className="text-xs text-slate-500 font-mono">{client.documento}</p>
-                                    </div>
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${client.tipo === 'PJ' ? 'bg-indigo-600' : 'bg-emerald-600'}`}>{client.tipo === 'PJ' ? <Building2 size={20} /> : <User size={20} />}</div>
+                                    <div><h3 className="font-bold text-slate-200">{client.nome}</h3><p className="text-xs text-slate-500 font-mono">{client.documento}</p></div>
                                 </div>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button type="button" onClick={() => handleOpenModal(client)} className="p-1.5 text-slate-500 hover:text-blue-400 rounded hover:bg-slate-800">
-                                        <Edit2 size={16} />
-                                    </button>
-                                    <button type="button" onClick={(e) => handleDelete(e, client.id)} className="p-1.5 text-slate-500 hover:text-red-400 rounded hover:bg-slate-800">
-                                        <Trash2 size={16} />
-                                    </button>
+                                <div className="flex gap-1">
+                                    <button type="button" onClick={() => handleOpenModal(client)} className="p-1.5 text-slate-500 hover:text-blue-400 rounded hover:bg-slate-800 transition-colors"><Edit2 size={16} /></button>
+                                    <button type="button" onClick={(e) => handleInitiateDelete(e, client.id)} className="p-1.5 text-slate-500 hover:text-red-400 rounded hover:bg-slate-800 transition-colors"><Trash2 size={16} /></button>
                                 </div>
                                 </div>
-
-                                <div className="space-y-2.5">
-                                <div className="flex items-center gap-2 text-sm text-slate-400">
-                                    <Mail size={14} className="text-slate-600" />
-                                    <span className="truncate">{client.email}</span>
+                                <div className="space-y-2.5 text-sm text-slate-400">
+                                <div className="flex items-center gap-2"><Mail size={14} className="text-slate-600" /><span className="truncate">{client.email}</span></div>
+                                <div className="flex items-center gap-2"><Phone size={14} className="text-slate-600" /><span>{client.telefone}</span></div>
+                                <div className="flex items-center gap-2"><MapPin size={14} className="text-slate-600" /><span>{client.cidade}</span></div>
                                 </div>
-                                <div className="flex items-center gap-2 text-sm text-slate-400">
-                                    <Phone size={14} className="text-slate-600" />
-                                    <span>{client.telefone}</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm text-slate-400">
-                                    <MapPin size={14} className="text-slate-600" />
-                                    <span>{client.cidade}</span>
-                                </div>
-                                </div>
-
-                                <div className="mt-4 pt-4 border-t border-slate-800 flex justify-between items-center">
-                                <span className={`text-xs px-2 py-1 rounded font-medium border ${
-                                    client.status === 'Ativo' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-slate-800 text-slate-400 border-slate-700'
-                                }`}>
-                                    {client.status}
-                                </span>
-                                </div>
+                                <div className="mt-4 pt-4 border-t border-slate-800 flex justify-between items-center"><span className={`text-xs px-2 py-1 rounded font-medium border ${client.status === 'Ativo' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>{client.status}</span></div>
                             </div>
                         ))}
                     </div>
                 )}
 
-                {/* Pagination Controls */}
                 <div className="flex justify-between items-center mt-6 bg-slate-900 p-4 rounded-xl border border-slate-800">
-                    <p className="text-sm text-slate-500">
-                        Mostrando <span className="font-bold text-slate-300">{indexOfFirstItem + 1}</span> a <span className="font-bold text-slate-300">{Math.min(indexOfLastItem, filteredClients.length)}</span> de <span className="font-bold text-slate-300">{filteredClients.length}</span> resultados
-                    </p>
+                    <p className="text-sm text-slate-500">Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, filteredClients.length)} de {filteredClients.length} resultados</p>
                     <div className="flex gap-2">
-                        <button 
-                            type="button"
-                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                            disabled={currentPage === 1}
-                            className="p-2 border border-slate-700 rounded hover:bg-slate-800 text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <ChevronLeft size={16} />
-                        </button>
-                        <span className="px-4 py-2 text-sm font-medium text-slate-400">
-                            Página {currentPage} de {totalPages}
-                        </span>
-                        <button 
-                            type="button"
-                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                            disabled={currentPage === totalPages}
-                            className="p-2 border border-slate-700 rounded hover:bg-slate-800 text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <ChevronRight size={16} />
-                        </button>
+                        <button type="button" onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-2 border border-slate-700 rounded hover:bg-slate-800 text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed"><ChevronLeft size={16} /></button>
+                        <span className="px-4 py-2 text-sm font-medium text-slate-400">Página {currentPage} de {totalPages}</span>
+                        <button type="button" onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="p-2 border border-slate-700 rounded hover:bg-slate-800 text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed"><ChevronRight size={16} /></button>
                     </div>
                 </div>
             </>
         )}
       </div>
 
-      {/* Client Modal */}
+      {/* CONFIRM DELETE MODAL */}
+      {confirmDeleteModal.isOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+          <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl w-full max-w-md p-8 animate-scale-in text-center">
+            <div className={`mx-auto w-20 h-20 rounded-full flex items-center justify-center mb-6 ${confirmDeleteModal.isProhibited ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'}`}>
+               {confirmDeleteModal.isProhibited ? <ShieldAlert size={44} /> : <AlertTriangle size={44} />}
+            </div>
+            
+            <h2 className="text-2xl font-bold text-white mb-3">
+              {confirmDeleteModal.isProhibited ? "Ação Bloqueada" : "Confirmar Exclusão"}
+            </h2>
+            
+            <p className="text-slate-400 mb-8 leading-relaxed">
+              {confirmDeleteModal.isProhibited 
+                ? "Este cliente possui processos vinculados no sistema. Encerre ou transfira os processos antes de excluí-lo." 
+                : "Tem certeza que deseja excluir este cliente? Esta ação removerá permanentemente o cadastro e contatos associados."}
+            </p>
+
+            <div className="flex flex-col gap-3">
+              {!confirmDeleteModal.isProhibited ? (
+                <>
+                  <button onClick={executeDelete} className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-900/40 transition-all">SIM, EXCLUIR CLIENTE</button>
+                  <button onClick={() => setConfirmDeleteModal({ isOpen: false, clientId: null, isProhibited: false })} className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition-all">CANCELAR</button>
+                </>
+              ) : (
+                <button onClick={() => setConfirmDeleteModal({ isOpen: false, clientId: null, isProhibited: false })} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-900/40 transition-all">ENTENDI</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ORIGINAL ADVANCED CLIENT MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl animate-scale-in border border-slate-800 max-h-[90vh] overflow-y-auto">
@@ -553,199 +453,56 @@ export const Clients: React.FC = () => {
              </div>
              
              <div className="p-6 space-y-5">
-                {/* Row 1: Nome Completo (Largura Total) */}
-                <InputWithIcon 
-                  label="Nome Completo / Razão Social"
-                  icon={User}
-                  placeholder="Ex: João da Silva ou Empresa LTDA"
-                  value={editingClient.nome}
-                  onChange={e => setEditingClient({...editingClient, nome: e.target.value})}
-                  required
-                  error={errors.nome}
-                />
-
-                {/* Row 2: CPF/CNPJ (Com detecção) e Status */}
+                <InputWithIcon label="Nome Completo / Razão Social" icon={User} placeholder="Ex: João da Silva ou Empresa LTDA" value={editingClient.nome} onChange={e => setEditingClient({...editingClient, nome: e.target.value})} required error={errors.nome} />
                 <div className="grid grid-cols-2 gap-5">
-                    <InputWithIcon 
-                      label="CPF / CNPJ"
-                      icon={CreditCard}
-                      placeholder="000.000.000-00"
-                      value={editingClient.documento}
-                      onChange={handleDocumentChange}
-                      maxLength={18}
-                      className="font-mono tracking-wide"
-                      required
-                      error={errors.documento}
-                    />
-                    <CustomDropdown 
-                      label="Status"
-                      value={editingClient.status || 'Ativo'}
-                      onChange={(val) => setEditingClient({...editingClient, status: val as any})}
-                      options={[
-                        { value: 'Ativo', label: 'Ativo', icon: <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div> },
-                        { value: 'Inativo', label: 'Inativo', icon: <div className="w-2.5 h-2.5 rounded-full bg-slate-500"></div> }
-                      ]}
-                    />
+                    <InputWithIcon label="CPF / CNPJ" icon={CreditCard} placeholder="000.000.000-00" value={editingClient.documento} onChange={handleDocumentChange} maxLength={18} className="font-mono tracking-wide" required error={errors.documento} />
+                    <CustomDropdown label="Status" value={editingClient.status || 'Ativo'} onChange={(val) => setEditingClient({...editingClient, status: val as any})} options={[{ value: 'Ativo', label: 'Ativo', icon: <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div> }, { value: 'Inativo', label: 'Inativo', icon: <div className="w-2.5 h-2.5 rounded-full bg-slate-500"></div> }]} />
+                </div>
+                <InputWithIcon label="Email" icon={Mail} type="email" placeholder="cliente@email.com" value={editingClient.email} onChange={e => setEditingClient({...editingClient, email: e.target.value})} />
+                <div className="grid grid-cols-2 gap-5">
+                  <InputWithIcon label="Telefone" icon={Phone} placeholder="(00) 0000-0000" value={editingClient.telefone} onChange={handlePhoneChange} maxLength={15} />
+                   <InputWithIcon label="Cidade / Estado" icon={MapPin} placeholder="Ex: São Paulo - SP" value={editingClient.cidade} onChange={e => setEditingClient({...editingClient, cidade: e.target.value})} />
                 </div>
 
-                {/* Row 3: Email (Full Width) */}
-                <InputWithIcon 
-                  label="Email"
-                  icon={Mail}
-                  type="email"
-                  placeholder="cliente@email.com"
-                  value={editingClient.email}
-                  onChange={e => setEditingClient({...editingClient, email: e.target.value})}
-                />
-
-                {/* Row 4: Telefone & Cidade */}
-                <div className="grid grid-cols-2 gap-5">
-                  <InputWithIcon 
-                      label="Telefone"
-                      icon={Phone}
-                      placeholder="(00) 0000-0000"
-                      value={editingClient.telefone}
-                      onChange={handlePhoneChange}
-                      maxLength={15}
-                    />
-                   <InputWithIcon 
-                    label="Cidade / Estado"
-                    icon={MapPin}
-                    placeholder="Ex: São Paulo - SP"
-                    value={editingClient.cidade}
-                    onChange={e => setEditingClient({...editingClient, cidade: e.target.value})}
-                   />
-                </div>
-
-                {/* Section for PJ Contacts */}
                 {editingClient.tipo === 'PJ' && (
                   <div className="border-t border-slate-800 pt-5 mt-2 animate-fade-in">
                     <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-sm font-bold text-slate-300 uppercase flex items-center gap-2">
-                        <Users size={16} className="text-blue-500"/> Representantes / Contatos
-                      </h3>
-                      <button 
-                        type="button"
-                        onClick={handleAddContact}
-                        className="text-xs bg-slate-800 text-slate-300 px-3 py-1.5 rounded hover:bg-slate-700 border border-slate-700 transition-colors flex items-center gap-1"
-                      >
-                        <Plus size={12}/> Adicionar Contato
-                      </button>
+                      <h3 className="text-sm font-bold text-slate-300 uppercase flex items-center gap-2"><Users size={16} className="text-blue-500"/> Representantes / Contatos</h3>
+                      <button type="button" onClick={handleAddContact} className="text-xs bg-slate-800 text-slate-300 px-3 py-1.5 rounded hover:bg-slate-700 border border-slate-700 transition-colors flex items-center gap-1"><Plus size={12}/> Adicionar Contato</button>
                     </div>
-
                     <div className="space-y-3">
                       {(!editingClient.contatos || editingClient.contatos.length === 0) && (
-                        <div className="text-center py-6 bg-slate-950/50 rounded-lg border border-dashed border-slate-800 text-slate-600 text-sm italic">
-                          Nenhum contato associado a esta empresa.
-                        </div>
+                        <div className="text-center py-6 bg-slate-950/50 rounded-lg border border-dashed border-slate-800 text-slate-600 text-sm italic">Nenhum contato associado a esta empresa.</div>
                       )}
-                      
                       {editingClient.contatos?.map((contact) => (
                         <div key={contact.id}>
                           {expandedContactId === contact.id ? (
-                            <div className="bg-slate-950 p-4 rounded-xl border border-blue-600/30 shadow-lg shadow-blue-900/10 relative animate-fade-in ring-1 ring-blue-500/20">
+                            <div className="bg-slate-950 p-4 rounded-xl border border-blue-600/30 shadow-lg relative animate-fade-in ring-1 ring-blue-500/20">
                                 <div className="flex justify-between items-center mb-4">
                                      <h4 className="text-xs font-bold text-blue-400 uppercase tracking-wide">Editando Contato</h4>
-                                     <button 
-                                       type="button"
-                                       onClick={(e) => handleRemoveContact(e, contact.id)}
-                                       className="text-slate-500 hover:text-red-400 transition-colors p-1"
-                                     >
-                                       <Trash2 size={14}/>
-                                     </button>
+                                     <button type="button" onClick={(e) => handleRemoveContact(e, contact.id)} className="text-slate-500 hover:text-red-400 transition-colors p-1"><Trash2 size={14}/></button>
                                 </div>
-                                
                                 <div className="grid grid-cols-2 gap-4">
                                    <div className="col-span-2 md:col-span-1">
                                       <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nome</label>
-                                      <div className="relative">
-                                        <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600"/>
-                                        <input 
-                                          type="text"
-                                          className="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 pl-9 pr-2 text-sm text-slate-300 focus:ring-1 focus:ring-blue-500 outline-none"
-                                          placeholder="Nome do contato"
-                                          value={contact.nome}
-                                          onChange={e => handleContactChange(contact.id, 'nome', e.target.value)}
-                                          autoFocus
-                                        />
-                                      </div>
+                                      <input type="text" className="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 px-3 text-sm text-slate-300 focus:ring-1 focus:ring-blue-500 outline-none" placeholder="Nome" value={contact.nome} onChange={e => handleContactChange(contact.id, 'nome', e.target.value)} />
                                    </div>
                                    <div className="col-span-2 md:col-span-1">
                                       <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cargo</label>
-                                      <div className="relative">
-                                        <Briefcase size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600"/>
-                                        <input 
-                                          type="text"
-                                          className="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 pl-9 pr-2 text-sm text-slate-300 focus:ring-1 focus:ring-blue-500 outline-none"
-                                          placeholder="Ex: Sócio, Gerente"
-                                          value={contact.cargo}
-                                          onChange={e => handleContactChange(contact.id, 'cargo', e.target.value)}
-                                        />
-                                      </div>
-                                   </div>
-                                   <div className="col-span-2 md:col-span-1">
-                                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Email</label>
-                                      <div className="relative">
-                                        <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600"/>
-                                        <input 
-                                          type="text"
-                                          className="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 pl-9 pr-2 text-sm text-slate-300 focus:ring-1 focus:ring-blue-500 outline-none"
-                                          placeholder="email@empresa.com"
-                                          value={contact.email}
-                                          onChange={e => handleContactChange(contact.id, 'email', e.target.value)}
-                                        />
-                                      </div>
-                                   </div>
-                                   <div className="col-span-2 md:col-span-1">
-                                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Telefone</label>
-                                      <div className="relative">
-                                        <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600"/>
-                                        <input 
-                                          type="text"
-                                          className="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 pl-9 pr-2 text-sm text-slate-300 focus:ring-1 focus:ring-blue-500 outline-none"
-                                          placeholder="(00) 0000-0000"
-                                          value={contact.telefone}
-                                          onChange={e => handleContactChange(contact.id, 'telefone', formatPhone(e.target.value))}
-                                        />
-                                      </div>
+                                      <input type="text" className="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 px-3 text-sm text-slate-300 focus:ring-1 focus:ring-blue-500 outline-none" placeholder="Cargo" value={contact.cargo} onChange={e => handleContactChange(contact.id, 'cargo', e.target.value)} />
                                    </div>
                                 </div>
-
                                 <div className="mt-4 flex justify-end">
-                                    <button 
-                                        type="button"
-                                        onClick={() => setExpandedContactId(null)}
-                                        className="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-900/20 flex items-center gap-1"
-                                    >
-                                        <CheckCircle2 size={14} /> Concluir
-                                    </button>
+                                    <button type="button" onClick={() => setExpandedContactId(null)} className="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"><CheckCircle2 size={14} /> Concluir</button>
                                 </div>
                             </div>
                           ) : (
                             <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center group hover:border-slate-700 transition-all">
                                 <div className="flex items-center gap-3 overflow-hidden">
-                                    <div className="w-10 h-10 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500 shrink-0">
-                                        <User size={18} />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="font-bold text-slate-200 text-sm truncate">{contact.nome || <span className="text-slate-600 italic">Novo Contato</span>}</p>
-                                        <div className="flex items-center gap-2 text-xs text-slate-500 truncate">
-                                             <span className="flex items-center gap-1"><Briefcase size={10} /> {contact.cargo || 'Cargo não inf.'}</span>
-                                             <span className="hidden sm:inline">•</span>
-                                             <span className="flex items-center gap-1 truncate"><Mail size={10} /> {contact.email || 'Email não inf.'}</span>
-                                        </div>
-                                    </div>
+                                    <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-500 shrink-0"><User size={18} /></div>
+                                    <div className="min-w-0"><p className="font-bold text-slate-200 text-sm truncate">{contact.nome || <span className="text-slate-600 italic">Novo Contato</span>}</p><p className="text-xs text-slate-500">{contact.cargo || 'Cargo não inf.'}</p></div>
                                 </div>
-                                <div className="flex gap-1 shrink-0">
-                                    <button 
-                                      type="button"
-                                      onClick={() => setExpandedContactId(contact.id)}
-                                      className="p-2 text-slate-400 hover:text-blue-400 hover:bg-slate-900 rounded-lg transition-colors"
-                                      title="Editar"
-                                    >
-                                      <Edit2 size={16}/>
-                                    </button>
-                                </div>
+                                <button type="button" onClick={() => setExpandedContactId(contact.id)} className="p-2 text-slate-400 hover:text-blue-400 rounded-lg"><Edit2 size={16}/></button>
                             </div>
                           )}
                         </div>
@@ -753,9 +510,8 @@ export const Clients: React.FC = () => {
                     </div>
                   </div>
                 )}
-                 
              </div>
-             <div className="p-6 border-t border-slate-800 flex justify-end gap-3 bg-slate-900 rounded-b-2xl sticky bottom-0 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.3)]">
+             <div className="p-6 border-t border-slate-800 flex justify-end gap-3 bg-slate-900 rounded-b-2xl sticky bottom-0 z-10">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-slate-400 hover:bg-slate-800 hover:text-white rounded-lg font-medium transition-colors">Cancelar</button>
                 <button type="button" onClick={handleSave} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-lg shadow-blue-500/30 font-medium transition-all">Salvar Cliente</button>
              </div>
