@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, Calendar, Clock } from 'lucide-react';
@@ -25,7 +26,6 @@ const VISIBLE_ITEMS = 5; // How many items visible at once
 
 const WheelColumn = ({ items, value, onChange }: { items: string[], value: string, onChange: (val: string) => void }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const isScrolling = useRef(false);
   const scrollTimeout = useRef<any>(null);
 
   // Initial Scroll Position
@@ -155,6 +155,19 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
       setSelectedDate(null);
     }
   }, [value, includeTime]);
+
+  // ESC Support
+  useEffect(() => {
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleEsc);
+    }
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen]);
   
   const changeMonth = (offset: number) => {
     setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + offset, 1));
@@ -283,7 +296,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
         )}
         <div className="mt-6 pt-4 border-t border-slate-800 flex justify-end">
            <button type="button" onClick={() => setIsOpen(false)} className="text-xs font-bold text-slate-500 hover:text-slate-300 transition-colors uppercase tracking-wider">
-             Fechar
+             Fechar (ESC)
            </button>
         </div>
       </div>

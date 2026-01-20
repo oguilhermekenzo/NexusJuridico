@@ -2,7 +2,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AreaDireito } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Always use process.env.API_KEY directly as a named parameter.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const summarizeIntimacao = async (text: string): Promise<{ summary: string; prazo: string | null; acao: string | null }> => {
   try {
@@ -20,12 +21,14 @@ export const summarizeIntimacao = async (text: string): Promise<{ summary: strin
             summary: { type: Type.STRING, description: "Resumo do teor da publicação" },
             prazo: { type: Type.STRING, description: "Data ou prazo mencionado (ex: 15 dias), ou null se não houver" },
             acao: { type: Type.STRING, description: "Ação sugerida para o advogado, ou null se informativo" }
-          }
+          },
+          propertyOrdering: ["summary", "prazo", "acao"]
         }
       }
     });
 
-    const jsonStr = response.text;
+    // Use .text property and trim it before parsing.
+    const jsonStr = response.text?.trim();
     if (!jsonStr) throw new Error("Sem resposta da IA");
     return JSON.parse(jsonStr);
 
@@ -52,7 +55,8 @@ export const generateDraft = async (
     Estruture a peça com cabeçalho, fatos, direito e pedidos. Use linguagem jurídica formal e adequada.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      // Upgraded to pro for complex writing tasks.
+      model: 'gemini-3-pro-preview',
       contents: prompt,
     });
 
@@ -66,7 +70,8 @@ export const generateDraft = async (
 export const researchJurisprudence = async (query: string): Promise<{ text: string; sources: { title: string; uri: string }[] }> => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      // Upgraded to pro for complex reasoning/grounding tasks.
+      model: 'gemini-3-pro-preview',
       contents: `Pesquise jurisprudências recentes e teses jurídicas sobre: "${query}". 
       Cite tribunais superiores (STJ, STF, TST) quando aplicável. 
       Retorne um texto explicativo consolidando o entendimento atual.`,
@@ -78,6 +83,7 @@ export const researchJurisprudence = async (query: string): Promise<{ text: stri
     const text = response.text || "";
     const sources: { title: string; uri: string }[] = [];
     
+    // Extract website URLs from groundingChunks as per requirements.
     if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
       response.candidates[0].groundingMetadata.groundingChunks.forEach((chunk) => {
         if (chunk.web) {
@@ -117,7 +123,8 @@ export const askThesisAI = async (thesisContent: string, question: string, histo
     Responda de forma direta, técnica e útil.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      // Upgraded to pro for advanced document analysis.
+      model: 'gemini-3-pro-preview',
       contents: prompt,
     });
 
@@ -139,7 +146,8 @@ export const generateThesisContent = async (title: string, description: string, 
     O texto deve conter introdução, fundamentação legal, jurisprudência e conclusão.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      // Upgraded to pro for long-form legal drafting.
+      model: 'gemini-3-pro-preview',
       contents: prompt,
     });
 
