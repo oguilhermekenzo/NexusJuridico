@@ -5,10 +5,20 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   define: {
-    'process.env.API_KEY': JSON.stringify(process.env.API_KEY),
+    // Garante que process.env.API_KEY esteja disponível no lado do cliente
+    'process.env.API_KEY': JSON.stringify(process.env.API_KEY || ''),
     'process.env': {}
   },
   build: {
     outDir: 'dist',
-  }
+    sourcemap: false,
+    minify: 'terser',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'recharts', 'lucide-react'],
+        },
+      },
+    },
+  },
 });
