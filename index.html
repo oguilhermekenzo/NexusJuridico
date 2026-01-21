@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Tailwind CDN é a forma mais segura de garantir o CSS em ambientes de build instáveis -->
+    <!-- Tailwind CDN para garantir estilos imediatos sem dependência de build de CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -43,6 +43,8 @@
       ::-webkit-scrollbar-track { background: #0f172a; }
       ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
       ::-webkit-scrollbar-thumb:hover { background: #475569; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
   <script type="importmap">
 {

@@ -12,7 +12,8 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    minify: 'terser',
+    // Removido 'minify: terser' para evitar erro de módulo ausente
+    minify: 'esbuild', 
     rollupOptions: {
       output: {
         manualChunks: {
