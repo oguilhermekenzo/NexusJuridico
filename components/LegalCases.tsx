@@ -94,9 +94,10 @@ interface LegalCasesProps {
   customFields: CustomFieldConfig[];
   initialProcessId?: string;
   onClearInitialProcess?: () => void;
+  showNotify: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-export const LegalCases: React.FC<LegalCasesProps> = ({ customFields, initialProcessId, onClearInitialProcess }) => {
+export const LegalCases: React.FC<LegalCasesProps> = ({ customFields, initialProcessId, onClearInitialProcess, showNotify }) => {
   const { cases, clients, timesheet, addCase, updateCase, deleteCase, addTimesheetEntry, deleteTimesheetEntry } = useData();
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [searchTerm, setSearchTerm] = useState('');
@@ -155,10 +156,30 @@ export const LegalCases: React.FC<LegalCasesProps> = ({ customFields, initialPro
     setIsCaseModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (editingCase.id) updateCase(editingCase as Processo);
-    else addCase({ ...editingCase, id: Date.now().toString() } as Processo);
-    setIsCaseModalOpen(false);
+  const handleSave = async () => {
+    try {
+      if (editingCase.id && !editingCase.id.startsWith('demo-')) {
+        await updateCase(editingCase as Processo);
+        showNotify("Processo atualizado com sucesso!");
+      } else {
+        await addCase({ ...editingCase, id: Date.now().toString() } as Processo);
+        showNotify("Processo cadastrado com sucesso!");
+      }
+      setIsCaseModalOpen(false);
+    } catch (e) {
+      showNotify("Erro ao salvar processo.", "error");
+    }
+  };
+
+  const handleDeleteCase = async (id: string) => {
+    if (window.confirm("Deseja realmente excluir este processo?")) {
+      try {
+        await deleteCase(id);
+        showNotify("Processo removido!", "info");
+      } catch (e) {
+        showNotify("Erro ao excluir processo.", "error");
+      }
+    }
   };
 
   // HANDLERS FOR NEW ITEMS
@@ -167,6 +188,7 @@ export const LegalCases: React.FC<LegalCasesProps> = ({ customFields, initialPro
     const item = { ...newPrazo, id: Date.now().toString() } as Prazo;
     setEditingCase({ ...editingCase, prazos: [...(editingCase.prazos || []), item] });
     setNewPrazo({ data: new Date().toISOString().split('T')[0], descricao: '', status: 'PENDENTE' });
+    showNotify("Prazo adicionado!");
   };
 
   const handleAddAudiencia = () => {
@@ -174,6 +196,7 @@ export const LegalCases: React.FC<LegalCasesProps> = ({ customFields, initialPro
     const item = { ...newAudiencia, id: Date.now().toString() } as Audiencia;
     setEditingCase({ ...editingCase, audiencias: [...(editingCase.audiencias || []), item] });
     setNewAudiencia({ data: new Date().toISOString().split('T')[0] + 'T09:00', tipo: 'Conciliação', local: '', status: 'AGENDADA' });
+    showNotify("Audiência agendada!");
   };
 
   const handleAddAndamento = () => {
@@ -185,6 +208,7 @@ export const LegalCases: React.FC<LegalCasesProps> = ({ customFields, initialPro
       ultimoAndamento: { data: item.data, descricao: item.descricao }
     });
     setNewAndamento({ data: new Date().toISOString().split('T')[0], descricao: '', tipo: 'MOVIMENTACAO' });
+    showNotify("Andamento registrado!");
   };
 
   const handleAddTransaction = () => {
@@ -196,17 +220,23 @@ export const LegalCases: React.FC<LegalCasesProps> = ({ customFields, initialPro
       financeiro: { ...financeiro, transacoes: [item, ...financeiro.transacoes] } 
     });
     setNewTransaction({ data: new Date().toISOString().split('T')[0], descricao: '', tipo: 'RECEITA', valor: 0, categoria: 'Honorários' });
+    showNotify("Lançamento financeiro realizado!");
   };
 
-  const handleAddTimesheet = () => {
+  const handleAddTimesheet = async () => {
     if (!newTimesheet.descricao || !newTimesheet.horas) return;
-    addTimesheetEntry({
-      ...newTimesheet,
-      id: Date.now().toString(),
-      processoId: editingCase.id!
-    } as TimesheetEntry);
-    setNewTimesheet({ ...newTimesheet, descricao: '', horas: 1 });
-    setIsTimesheetFormOpen(false);
+    try {
+      await addTimesheetEntry({
+        ...newTimesheet,
+        id: Date.now().toString(),
+        processoId: editingCase.id!
+      } as TimesheetEntry);
+      setNewTimesheet({ ...newTimesheet, descricao: '', horas: 1 });
+      setIsTimesheetFormOpen(false);
+      showNotify("Horas lançadas com sucesso!");
+    } catch (e) {
+      showNotify("Erro ao lançar horas.", "error");
+    }
   };
 
   const TabButton = ({ id, label, icon: Icon }: { id: typeof activeModalTab, label: string, icon: any }) => (
@@ -285,7 +315,7 @@ export const LegalCases: React.FC<LegalCasesProps> = ({ customFields, initialPro
                   <td className="p-4 text-right">
                     <div className="flex justify-end gap-1">
                       <button onClick={() => handleOpenCaseModal(processo)} className="p-1.5 text-slate-500 hover:text-blue-400 hover:bg-slate-800 rounded transition-all"><Edit2 size={16} /></button>
-                      <button onClick={() => deleteCase(processo.id)} className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded transition-all"><Trash2 size={16} /></button>
+                      <button onClick={() => handleDeleteCase(processo.id)} className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded transition-all"><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>
@@ -306,7 +336,7 @@ export const LegalCases: React.FC<LegalCasesProps> = ({ customFields, initialPro
                 </div>
                 <div className="flex gap-1">
                   <button onClick={() => handleOpenCaseModal(processo)} className="p-2 text-slate-500 hover:text-blue-400 hover:bg-slate-800 rounded-lg transition-colors"><Edit2 size={16}/></button>
-                  <button onClick={() => deleteCase(processo.id)} className="p-2 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors"><Trash2 size={16}/></button>
+                  <button onClick={() => handleDeleteCase(processo.id)} className="p-2 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors"><Trash2 size={16}/></button>
                 </div>
               </div>
               
@@ -503,7 +533,7 @@ export const LegalCases: React.FC<LegalCasesProps> = ({ customFields, initialPro
                         </div>
                         <div className="flex items-center gap-4">
                            <div className="text-right"><span className="block font-mono font-bold text-blue-500 text-base">{entry.horas.toFixed(1)}h</span><span className="text-[9px] text-slate-600 uppercase font-bold">{entry.faturavel ? 'Faturável' : 'Não Faturável'}</span></div>
-                           <button onClick={() => deleteTimesheetEntry(entry.id)} className="p-2 text-slate-700 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16} /></button>
+                           <button onClick={async () => { try { await deleteTimesheetEntry(entry.id); showNotify("Lançamento de horas removido."); } catch(e) { showNotify("Erro ao remover horas.", "error"); } }} className="p-2 text-slate-700 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16} /></button>
                         </div>
                       </div>
                     ))}

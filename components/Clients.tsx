@@ -94,7 +94,11 @@ const InputWithIcon: React.FC<InputWithIconProps> = ({ label, icon: Icon, classN
   </div>
 );
 
-export const Clients: React.FC = () => {
+interface ClientsProps {
+  showNotify: (message: string, type?: 'success' | 'error' | 'info') => void;
+}
+
+export const Clients: React.FC<ClientsProps> = ({ showNotify }) => {
   const { clients, cases, addClient, updateClient, deleteClient } = useData();
   
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
@@ -147,10 +151,15 @@ export const Clients: React.FC = () => {
     setConfirmDeleteModal({ isOpen: true, clientId, isProhibited: hasProcesses });
   };
 
-  const executeDelete = () => {
+  const executeDelete = async () => {
     if (confirmDeleteModal.clientId) {
-      deleteClient(confirmDeleteModal.clientId);
-      setConfirmDeleteModal({ isOpen: false, clientId: null, isProhibited: false });
+      try {
+        await deleteClient(confirmDeleteModal.clientId);
+        setConfirmDeleteModal({ isOpen: false, clientId: null, isProhibited: false });
+        showNotify("Cliente excluído com sucesso!", "info");
+      } catch (e) {
+        showNotify("Erro ao excluir cliente.", "error");
+      }
     }
   };
 
@@ -166,14 +175,24 @@ export const Clients: React.FC = () => {
     setEditingClient({ ...editingClient, documento: formatCPFCNPJ(e.target.value), tipo: newType });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const newErrors: Record<string, string> = {};
     if (!editingClient.nome?.trim()) newErrors.nome = 'Nome é obrigatório.';
     if (!editingClient.documento?.trim()) newErrors.documento = 'Documento é obrigatório.';
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
-    if (editingClient.id) updateClient(editingClient as Cliente);
-    else addClient({ ...editingClient, id: Date.now().toString() } as Cliente);
-    setIsModalOpen(false);
+    
+    try {
+      if (editingClient.id && !editingClient.id.startsWith('demo-')) {
+        await updateClient(editingClient as Cliente);
+        showNotify("Cliente atualizado!");
+      } else {
+        await addClient({ ...editingClient, id: Date.now().toString() } as Cliente);
+        showNotify("Cliente cadastrado com sucesso!");
+      }
+      setIsModalOpen(false);
+    } catch (e) {
+      showNotify("Erro ao salvar cliente.", "error");
+    }
   };
 
   return (

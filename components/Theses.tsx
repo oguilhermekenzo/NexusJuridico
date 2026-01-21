@@ -5,7 +5,11 @@ import { Tese, AreaDireito } from '../types';
 import { askThesisAI, generateThesisContent } from '../services/geminiService';
 import { useData } from '../contexts/DataContext';
 
-export const Theses: React.FC = () => {
+interface ThesesProps {
+  showNotify: (message: string, type?: 'success' | 'error' | 'info') => void;
+}
+
+export const Theses: React.FC<ThesesProps> = ({ showNotify }) => {
   const { theses, addThesis, updateThesis, deleteThesis } = useData();
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,14 +53,19 @@ export const Theses: React.FC = () => {
     setConfirmDeleteModal({ isOpen: true, thesisId: id });
   };
 
-  const executeDelete = () => {
+  const executeDelete = async () => {
     if (confirmDeleteModal.thesisId) {
-      deleteThesis(confirmDeleteModal.thesisId);
-      setConfirmDeleteModal({ isOpen: false, thesisId: null });
+      try {
+        await deleteThesis(confirmDeleteModal.thesisId);
+        setConfirmDeleteModal({ isOpen: false, thesisId: null });
+        showNotify("Tese removida!", "info");
+      } catch (e) {
+        showNotify("Erro ao remover tese.", "error");
+      }
     }
   };
 
-  const handleSaveTese = () => {
+  const handleSaveTese = async () => {
     const newErrors: Record<string, string> = {};
     if (!editingTese.titulo?.trim()) newErrors.titulo = 'Título é obrigatório';
     if (!editingTese.conteudo?.trim()) newErrors.conteudo = 'Conteúdo é obrigatório';
@@ -67,16 +76,22 @@ export const Theses: React.FC = () => {
       return;
     }
 
-    if (editingTese.id) {
-      updateThesis(editingTese as Tese);
-    } else {
-      addThesis({
-        ...editingTese,
-        id: Date.now().toString(),
-        dataCriacao: new Date().toISOString()
-      } as Tese);
+    try {
+      if (editingTese.id && !editingTese.id.toString().startsWith('demo-')) {
+        await updateThesis(editingTese as Tese);
+        showNotify("Tese atualizada com sucesso!");
+      } else {
+        await addThesis({
+          ...editingTese,
+          id: Date.now().toString(),
+          dataCriacao: new Date().toISOString()
+        } as Tese);
+        showNotify("Nova tese cadastrada!");
+      }
+      setIsModalOpen(false);
+    } catch (e) {
+      showNotify("Erro ao salvar tese.", "error");
     }
-    setIsModalOpen(false);
   };
 
   return (

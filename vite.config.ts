@@ -5,19 +5,20 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   define: {
-    // Garante que process.env.API_KEY esteja disponível no lado do cliente
+    // Garante que as credenciais estejam disponíveis no lado do cliente
     'process.env.API_KEY': JSON.stringify(process.env.API_KEY || ''),
+    'process.env.SUPABASE_URL': JSON.stringify(process.env.SUPABASE_URL || ''),
+    'process.env.SUPABASE_ANON_KEY': JSON.stringify(process.env.SUPABASE_ANON_KEY || ''),
     'process.env': {}
   },
   build: {
     outDir: 'dist',
     sourcemap: false,
-    // Removido 'minify: terser' para evitar erro de módulo ausente
     minify: 'esbuild', 
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'recharts', 'lucide-react'],
+          vendor: ['react', 'react-dom', 'recharts', 'lucide-react', '@supabase/supabase-js'],
         },
       },
     },
