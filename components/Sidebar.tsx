@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, Scale, FileText, BrainCircuit, DollarSign, Settings, Users, Briefcase, BookOpen, Lock } from 'lucide-react';
+import { LayoutDashboard, Scale, FileText, BrainCircuit, DollarSign, Settings, Users, Briefcase, BookOpen, Lock, Calendar } from 'lucide-react';
 
 interface SidebarProps {
   currentView: string;
@@ -11,6 +11,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
   const menuItems = [
     { id: 'dashboard', label: 'Visão Geral', icon: LayoutDashboard },
     { id: 'clients', label: 'Clientes', icon: Users },
+    { id: 'agenda', label: 'Agenda', icon: Calendar },
     { id: 'cases', label: 'Processos', icon: Scale },
     { id: 'theses', label: 'Minhas Teses', icon: BookOpen },
     { id: 'documents', label: 'GED', icon: FileText, isDevelopment: true },

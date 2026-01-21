@@ -1,6 +1,6 @@
 
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { Cliente, Processo, Tese, AreaDireito, ProcessoStatus, Andamento } from '../types';
+import { Cliente, Processo, Tese, AreaDireito, ProcessoStatus, Andamento, Prazo, Audiencia } from '../types';
 
 interface DataContextType {
   clients: Cliente[];
@@ -137,6 +137,32 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const client = mockClients[i % mockClients.length];
       const distributionDate = new Date(today.getFullYear(), today.getMonth() - (i % 6), today.getDate() - (i * 2));
       
+      // Gerar datas relativas para popular a agenda
+      const dateToday = new Date();
+      const dateTomorrow = new Date(dateToday); dateTomorrow.setDate(dateToday.getDate() + 1);
+      const dateNextWeek = new Date(dateToday); dateNextWeek.setDate(dateToday.getDate() + 4);
+      const dateNextMonth = new Date(dateToday); dateNextMonth.setDate(dateToday.getDate() + 20);
+
+      const prazos: Prazo[] = [];
+      const audiencias: Audiencia[] = [];
+
+      // Distribuir compromissos entre os processos para a agenda ficar variada
+      if (i === 0) {
+        prazos.push({ id: `pr-h-${i}`, data: dateToday.toISOString().split('T')[0], descricao: 'Manifestação Urgente', status: 'PENDENTE' });
+      }
+      if (i === 1) {
+        prazos.push({ id: `pr-a-${i}`, data: dateTomorrow.toISOString().split('T')[0], descricao: 'Réplica à Contestação', status: 'PENDENTE' });
+      }
+      if (i === 2) {
+        audiencias.push({ id: `au-h-${i}`, data: dateToday.toISOString().split('T')[0] + 'T14:00', tipo: 'Conciliação', local: 'Sala Virtual 01', status: 'AGENDADA' });
+      }
+      if (i === 3) {
+        audiencias.push({ id: `au-s-${i}`, data: dateNextWeek.toISOString().split('T')[0] + 'T10:30', tipo: 'Instrução', local: 'Fórum Central - 2ª Vara', status: 'AGENDADA' });
+      }
+      if (i > 3 && i % 5 === 0) {
+        prazos.push({ id: `pr-f-${i}`, data: dateNextMonth.toISOString().split('T')[0], descricao: 'Apresentar Quesitos', status: 'PENDENTE' });
+      }
+
       return {
         id: `p${i + 1}`,
         numero: `${2024000 + i}-55.2024.8.26.0${100 + i}`,
@@ -147,8 +173,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         status: statuses[i % statuses.length],
         valorCausa: 25000 * (i + 1),
         dataDistribuicao: distributionDate.toISOString().split('T')[0],
-        prazos: [{ id: `pr${i}`, data: '2025-11-20', descricao: 'Manifestação sobre Contestação', status: 'PENDENTE' }],
-        audiencias: i % 4 === 0 ? [{ id: `au${i}`, data: '2025-12-15T14:30', tipo: 'Instrução', local: 'Tribunal Online', status: 'AGENDADA' }] : [],
+        prazos: prazos,
+        audiencias: audiencias,
         historicoAndamentos: [{ id: `h${i}`, data: distributionDate.toISOString().split('T')[0], descricao: 'Ação protocolada e sistema atualizado.', tipo: 'MOVIMENTACAO' }],
         ultimoAndamento: { data: distributionDate.toISOString().split('T')[0], descricao: 'Ação protocolada e sistema atualizado.' },
         financeiro: {

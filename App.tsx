@@ -7,12 +7,14 @@ import { AITools } from './components/AITools';
 import { Finance } from './components/Finance';
 import { Clients } from './components/Clients';
 import { Theses } from './components/Theses';
+import { Agenda } from './components/Agenda';
 import { AreaDireito, CustomFieldConfig } from './types';
 import { DataProvider, useData } from './contexts/DataContext';
 import { Settings, Database, Trash2, Sparkles, RefreshCcw, AlertTriangle } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const [currentView, setCurrentView] = useState('dashboard');
+  const [selectedProcessId, setSelectedProcessId] = useState<string | null>(null);
   const { cases, seedMockData, clearAllData } = useData();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
@@ -34,11 +36,23 @@ const AppContent: React.FC = () => {
     }, 800);
   };
 
+  const handleViewProcess = (processId: string) => {
+    setSelectedProcessId(processId);
+    setCurrentView('cases');
+  };
+
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard': return <Dashboard cases={cases} />;
       case 'clients': return <Clients />;
-      case 'cases': return <LegalCases customFields={customFields} />;
+      case 'agenda': return <Agenda onViewProcess={handleViewProcess} />;
+      case 'cases': return (
+        <LegalCases 
+          customFields={customFields} 
+          initialProcessId={selectedProcessId || undefined}
+          onClearInitialProcess={() => setSelectedProcessId(null)}
+        />
+      );
       case 'theses': return <Theses />;
       case 'ai-tools': return <AITools />;
       case 'finance': return <Finance />;
