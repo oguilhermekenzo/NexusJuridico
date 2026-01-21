@@ -30,7 +30,7 @@ const safeStorage = {
     try {
       return localStorage.getItem(key);
     } catch (e) {
-      console.warn("Nexus: Acesso ao Storage negado. Usando fallback em memória.");
+      console.warn("Juzk: Acesso ao Storage negado. Usando fallback em memória.");
       return null;
     }
   },
@@ -46,39 +46,39 @@ const safeStorage = {
   },
   clear: () => {
     try {
-      localStorage.removeItem('nexus_clients');
-      localStorage.removeItem('nexus_cases');
-      localStorage.removeItem('nexus_theses');
-      localStorage.removeItem('nexus_timesheet');
+      localStorage.removeItem('juzk_clients');
+      localStorage.removeItem('juzk_cases');
+      localStorage.removeItem('juzk_theses');
+      localStorage.removeItem('juzk_timesheet');
     } catch (e) {}
   }
 };
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [clients, setClients] = useState<Cliente[]>(() => {
-    const saved = safeStorage.getItem('nexus_clients');
+    const saved = safeStorage.getItem('juzk_clients') || safeStorage.getItem('nexus_clients');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [cases, setCases] = useState<Processo[]>(() => {
-    const saved = safeStorage.getItem('nexus_cases');
+    const saved = safeStorage.getItem('juzk_cases') || safeStorage.getItem('nexus_cases');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [theses, setTheses] = useState<Tese[]>(() => {
-    const saved = safeStorage.getItem('nexus_theses');
+    const saved = safeStorage.getItem('juzk_theses') || safeStorage.getItem('nexus_theses');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [timesheet, setTimesheet] = useState<TimesheetEntry[]>(() => {
-    const saved = safeStorage.getItem('nexus_timesheet');
+    const saved = safeStorage.getItem('juzk_timesheet') || safeStorage.getItem('nexus_timesheet');
     return saved ? JSON.parse(saved) : [];
   });
 
-  useEffect(() => { safeStorage.setItem('nexus_clients', JSON.stringify(clients)); }, [clients]);
-  useEffect(() => { safeStorage.setItem('nexus_cases', JSON.stringify(cases)); }, [cases]);
-  useEffect(() => { safeStorage.setItem('nexus_theses', JSON.stringify(theses)); }, [theses]);
-  useEffect(() => { safeStorage.setItem('nexus_timesheet', JSON.stringify(timesheet)); }, [timesheet]);
+  useEffect(() => { safeStorage.setItem('juzk_clients', JSON.stringify(clients)); }, [clients]);
+  useEffect(() => { safeStorage.setItem('juzk_cases', JSON.stringify(cases)); }, [cases]);
+  useEffect(() => { safeStorage.setItem('juzk_theses', JSON.stringify(theses)); }, [theses]);
+  useEffect(() => { safeStorage.setItem('juzk_timesheet', JSON.stringify(timesheet)); }, [timesheet]);
 
   const addClient = (client: Cliente) => setClients(prev => [...prev, client]);
   const updateClient = (client: Cliente) => setClients(prev => prev.map(c => String(c.id) === String(client.id) ? client : c));
@@ -171,13 +171,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ]
         },
         customData: {},
-        responsavel: 'Dr. Nexus IA'
+        responsavel: 'Dr. Juzk IA'
       };
     });
 
     const mockTimesheet: TimesheetEntry[] = mockCases.slice(0, 5).map((p, i) => ({
       id: `ts-${i}`,
-      advogado: 'Dr. Nexus IA',
+      advogado: 'Dr. Juzk IA',
       processoId: p.id,
       descricao: i % 2 === 0 ? 'Análise de documentos e triagem' : 'Elaboração de petição inicial complexa',
       data: new Date().toISOString().split('T')[0],
@@ -185,9 +185,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       faturavel: true
     }));
 
-    safeStorage.setItem('nexus_clients', JSON.stringify(mockClients));
-    safeStorage.setItem('nexus_cases', JSON.stringify(mockCases));
-    safeStorage.setItem('nexus_timesheet', JSON.stringify(mockTimesheet));
+    safeStorage.setItem('juzk_clients', JSON.stringify(mockClients));
+    safeStorage.setItem('juzk_cases', JSON.stringify(mockCases));
+    safeStorage.setItem('juzk_timesheet', JSON.stringify(mockTimesheet));
 
     setClients(mockClients);
     setCases(mockCases);

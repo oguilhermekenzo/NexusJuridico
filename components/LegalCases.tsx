@@ -108,7 +108,7 @@ export const LegalCases: React.FC<LegalCasesProps> = ({ customFields, initialPro
   // States for new items in tabs
   const [isTimesheetFormOpen, setIsTimesheetFormOpen] = useState(false);
   const [newTimesheet, setNewTimesheet] = useState<Partial<TimesheetEntry>>({
-    id: '', advogado: 'Dr. Nexus IA', descricao: '', data: new Date().toISOString().split('T')[0], horas: 1, faturavel: true
+    id: '', advogado: 'Dr. Juzk IA', descricao: '', data: new Date().toISOString().split('T')[0], horas: 1, faturavel: true
   });
 
   const [newPrazo, setNewPrazo] = useState<Partial<Prazo>>({ data: new Date().toISOString().split('T')[0], descricao: '', status: 'PENDENTE' });
@@ -149,7 +149,7 @@ export const LegalCases: React.FC<LegalCasesProps> = ({ customFields, initialPro
       setEditingCase({
         id: '', numero: '', titulo: '', clienteId: '', parteAdversa: '', area: AreaDireito.CIVEL, status: ProcessoStatus.ATIVO,
         valorCausa: 0, dataDistribuicao: new Date().toISOString().split('T')[0], prazos: [], audiencias: [], historicoAndamentos: [],
-        responsavel: 'Dr. Nexus IA', financeiro: { config: { honorariosContratuais: 0, percentualExito: 0, percentualSucumbencia: 0 }, transacoes: [] }, customData: {}
+        responsavel: 'Dr. Juzk IA', financeiro: { config: { honorariosContratuais: 0, percentualExito: 0, percentualSucumbencia: 0 }, transacoes: [] }, customData: {}
       });
     }
     setIsCaseModalOpen(true);
@@ -243,7 +243,7 @@ export const LegalCases: React.FC<LegalCasesProps> = ({ customFields, initialPro
           <input 
             type="text" 
             placeholder="Buscar por número, título ou cliente..." 
-            className="w-full bg-slate-950 pl-10 pr-4 py-2.5 border border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-600 text-sm text-slate-200 outline-none transition-all"
+            className="w-full bg-slate-950 pl-10 pr-4 py-2.5 border border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm text-slate-200 outline-none transition-all"
             value={searchTerm} 
             onChange={(e) => setSearchTerm(e.target.value)} 
           />

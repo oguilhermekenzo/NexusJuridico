@@ -23,8 +23,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
   return (
     <aside className="w-64 bg-slate-900 text-slate-400 flex flex-col h-screen fixed left-0 top-0 overflow-y-auto z-50 border-r border-slate-800">
       <div className="p-6 flex items-center gap-3 text-white border-b border-slate-800">
-        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-lg shadow-lg shadow-blue-900/50">N</div>
-        <span className="font-bold text-xl tracking-tight text-slate-100">Nexus Jurídico</span>
+        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-lg shadow-lg shadow-blue-900/50">J</div>
+        <span className="font-bold text-xl tracking-tight text-slate-100">Juzk</span>
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
