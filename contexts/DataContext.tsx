@@ -1,11 +1,12 @@
 
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { Cliente, Processo, Tese, AreaDireito, ProcessoStatus, Andamento, Prazo, Audiencia } from '../types';
+import { Cliente, Processo, Tese, AreaDireito, ProcessoStatus, Andamento, Prazo, Audiencia, TimesheetEntry } from '../types';
 
 interface DataContextType {
   clients: Cliente[];
   cases: Processo[];
   theses: Tese[];
+  timesheet: TimesheetEntry[];
   addClient: (client: Cliente) => void;
   updateClient: (client: Cliente) => void;
   deleteClient: (id: string) => void;
@@ -16,13 +17,14 @@ interface DataContextType {
   addThesis: (tese: Tese) => void;
   updateThesis: (tese: Tese) => void;
   deleteThesis: (id: string) => void;
+  addTimesheetEntry: (entry: TimesheetEntry) => void;
+  deleteTimesheetEntry: (id: string) => void;
   seedMockData: () => void;
   clearAllData: () => void;
 }
 
 const DataContext = createContext<DataContextType>({} as DataContextType);
 
-// Helper para persistência segura em frames
 const safeStorage = {
   getItem: (key: string) => {
     try {
@@ -35,9 +37,7 @@ const safeStorage = {
   setItem: (key: string, value: string) => {
     try {
       localStorage.setItem(key, value);
-    } catch (e) {
-      // Falha silenciosa se bloqueado
-    }
+    } catch (e) {}
   },
   removeItem: (key: string) => {
     try {
@@ -46,10 +46,10 @@ const safeStorage = {
   },
   clear: () => {
     try {
-      // Limpamos apenas as chaves do Nexus para ser mais seguro em ambientes compartilhados
       localStorage.removeItem('nexus_clients');
       localStorage.removeItem('nexus_cases');
       localStorage.removeItem('nexus_theses');
+      localStorage.removeItem('nexus_timesheet');
     } catch (e) {}
   }
 };
@@ -70,17 +70,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved ? JSON.parse(saved) : [];
   });
 
-  useEffect(() => {
-    safeStorage.setItem('nexus_clients', JSON.stringify(clients));
-  }, [clients]);
+  const [timesheet, setTimesheet] = useState<TimesheetEntry[]>(() => {
+    const saved = safeStorage.getItem('nexus_timesheet');
+    return saved ? JSON.parse(saved) : [];
+  });
 
-  useEffect(() => {
-    safeStorage.setItem('nexus_cases', JSON.stringify(cases));
-  }, [cases]);
-
-  useEffect(() => {
-    safeStorage.setItem('nexus_theses', JSON.stringify(theses));
-  }, [theses]);
+  useEffect(() => { safeStorage.setItem('nexus_clients', JSON.stringify(clients)); }, [clients]);
+  useEffect(() => { safeStorage.setItem('nexus_cases', JSON.stringify(cases)); }, [cases]);
+  useEffect(() => { safeStorage.setItem('nexus_theses', JSON.stringify(theses)); }, [theses]);
+  useEffect(() => { safeStorage.setItem('nexus_timesheet', JSON.stringify(timesheet)); }, [timesheet]);
 
   const addClient = (client: Cliente) => setClients(prev => [...prev, client]);
   const updateClient = (client: Cliente) => setClients(prev => prev.map(c => String(c.id) === String(client.id) ? client : c));
@@ -107,16 +105,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateThesis = (tese: Tese) => setTheses(prev => prev.map(t => String(t.id) === String(tese.id) ? tese : t));
   const deleteThesis = (id: string) => setTheses(prev => prev.filter(t => String(t.id) !== String(id)));
 
+  const addTimesheetEntry = (entry: TimesheetEntry) => setTimesheet(prev => [entry, ...prev]);
+  const deleteTimesheetEntry = (id: string) => setTimesheet(prev => prev.filter(e => e.id !== id));
+
   const clearAllData = () => {
-    console.log("Nexus: Limpando banco de dados...");
     setClients([]);
     setCases([]);
     setTheses([]);
+    setTimesheet([]);
     safeStorage.clear();
   };
 
   const seedMockData = () => {
-    console.log("Nexus: Iniciando Seed de dados...");
     const areas = Object.values(AreaDireito);
     const statuses = Object.values(ProcessoStatus);
     const today = new Date();
@@ -137,31 +137,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const client = mockClients[i % mockClients.length];
       const distributionDate = new Date(today.getFullYear(), today.getMonth() - (i % 6), today.getDate() - (i * 2));
       
-      // Gerar datas relativas para popular a agenda
       const dateToday = new Date();
       const dateTomorrow = new Date(dateToday); dateTomorrow.setDate(dateToday.getDate() + 1);
       const dateNextWeek = new Date(dateToday); dateNextWeek.setDate(dateToday.getDate() + 4);
-      const dateNextMonth = new Date(dateToday); dateNextMonth.setDate(dateToday.getDate() + 20);
 
       const prazos: Prazo[] = [];
       const audiencias: Audiencia[] = [];
 
-      // Distribuir compromissos entre os processos para a agenda ficar variada
-      if (i === 0) {
-        prazos.push({ id: `pr-h-${i}`, data: dateToday.toISOString().split('T')[0], descricao: 'Manifestação Urgente', status: 'PENDENTE' });
-      }
-      if (i === 1) {
-        prazos.push({ id: `pr-a-${i}`, data: dateTomorrow.toISOString().split('T')[0], descricao: 'Réplica à Contestação', status: 'PENDENTE' });
-      }
-      if (i === 2) {
-        audiencias.push({ id: `au-h-${i}`, data: dateToday.toISOString().split('T')[0] + 'T14:00', tipo: 'Conciliação', local: 'Sala Virtual 01', status: 'AGENDADA' });
-      }
-      if (i === 3) {
-        audiencias.push({ id: `au-s-${i}`, data: dateNextWeek.toISOString().split('T')[0] + 'T10:30', tipo: 'Instrução', local: 'Fórum Central - 2ª Vara', status: 'AGENDADA' });
-      }
-      if (i > 3 && i % 5 === 0) {
-        prazos.push({ id: `pr-f-${i}`, data: dateNextMonth.toISOString().split('T')[0], descricao: 'Apresentar Quesitos', status: 'PENDENTE' });
-      }
+      if (i === 0) prazos.push({ id: `pr-h-${i}`, data: dateToday.toISOString().split('T')[0], descricao: 'Manifestação Urgente', status: 'PENDENTE' });
+      if (i === 1) prazos.push({ id: `pr-a-${i}`, data: dateTomorrow.toISOString().split('T')[0], descricao: 'Réplica à Contestação', status: 'PENDENTE' });
+      if (i === 2) audiencias.push({ id: `au-h-${i}`, data: dateToday.toISOString().split('T')[0] + 'T14:00', tipo: 'Conciliação', local: 'Sala Virtual 01', status: 'AGENDADA' });
+      if (i === 3) audiencias.push({ id: `au-s-${i}`, data: dateNextWeek.toISOString().split('T')[0] + 'T10:30', tipo: 'Instrução', local: 'Fórum Central - 2ª Vara', status: 'AGENDADA' });
 
       return {
         id: `p${i + 1}`,
@@ -189,25 +175,23 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
     });
 
-    const mockTheses: Tese[] = Array.from({ length: 10 }).map((_, i) => ({
-      id: `t${i + 1}`,
-      titulo: `Tese de Defesa: Direito ${areas[i % areas.length]} #${i + 1}`,
-      area: areas[i % areas.length],
-      descricao: `Compêndio jurídico atualizado sobre Direito ${areas[i % areas.length]} focado em 2024/2025.`,
-      conteudo: `Este é um conteúdo demonstrativo da biblioteca de teses da Nexus para ${areas[i % areas.length]}.`,
-      dataCriacao: new Date().toISOString()
+    const mockTimesheet: TimesheetEntry[] = mockCases.slice(0, 5).map((p, i) => ({
+      id: `ts-${i}`,
+      advogado: 'Dr. Nexus IA',
+      processoId: p.id,
+      descricao: i % 2 === 0 ? 'Análise de documentos e triagem' : 'Elaboração de petição inicial complexa',
+      data: new Date().toISOString().split('T')[0],
+      horas: 1.5 + i,
+      faturavel: true
     }));
 
-    // Sincronização forçada imediata
     safeStorage.setItem('nexus_clients', JSON.stringify(mockClients));
     safeStorage.setItem('nexus_cases', JSON.stringify(mockCases));
-    safeStorage.setItem('nexus_theses', JSON.stringify(mockTheses));
+    safeStorage.setItem('nexus_timesheet', JSON.stringify(mockTimesheet));
 
     setClients(mockClients);
     setCases(mockCases);
-    setTheses(mockTheses);
-    
-    console.log("Nexus: Banco de dados populado com sucesso.");
+    setTimesheet(mockTimesheet);
   };
 
   return (
@@ -215,6 +199,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       clients, addClient, updateClient, deleteClient,
       cases, addCase, updateCase, deleteCase, addAndamento,
       theses, addThesis, updateThesis, deleteThesis,
+      timesheet, addTimesheetEntry, deleteTimesheetEntry,
       seedMockData, clearAllData
     }}>
       {children}

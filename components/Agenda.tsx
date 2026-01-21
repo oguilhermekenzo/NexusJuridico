@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { Calendar, Clock, Gavel, CheckCircle2, AlertTriangle, ChevronRight, Scale, Briefcase, Bell, MapPin, ExternalLink, Video } from 'lucide-react';
+import { Calendar, Clock, Gavel, CheckCircle2, AlertTriangle, ChevronRight, Scale, Briefcase, Bell, MapPin, ExternalLink, Video, AlertCircle } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 
 interface AgendaEvent {
@@ -22,11 +22,19 @@ interface AgendaProps {
 export const Agenda: React.FC<AgendaProps> = ({ onViewProcess }) => {
   const { cases } = useData();
 
+  // Helper para lidar com datas de forma consistente entre prazos (YYYY-MM-DD) e audiências (ISO)
+  const parseDate = (dateStr: string) => {
+    if (dateStr.includes('T')) return new Date(dateStr);
+    // Se não tem 'T', é YYYY-MM-DD. Parseamos como local.
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
   const allEvents = useMemo(() => {
     const events: AgendaEvent[] = [];
     
     cases.forEach(c => {
-      // Coletar Prazos
+      // Coletar Prazos Pendentes
       c.prazos?.forEach(p => {
         if (p.status === 'PENDENTE') {
           events.push({
@@ -42,7 +50,7 @@ export const Agenda: React.FC<AgendaProps> = ({ onViewProcess }) => {
         }
       });
       
-      // Coletar Audiências
+      // Coletar Audiências Agendadas
       c.audiencias?.forEach(a => {
         if (a.status === 'AGENDADA') {
           events.push({
@@ -60,7 +68,7 @@ export const Agenda: React.FC<AgendaProps> = ({ onViewProcess }) => {
       });
     });
 
-    return events.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
+    return events.sort((a, b) => parseDate(a.data).getTime() - parseDate(b.data).getTime());
   }, [cases]);
 
   const groupedEvents = useMemo(() => {
@@ -74,23 +82,28 @@ export const Agenda: React.FC<AgendaProps> = ({ onViewProcess }) => {
     endOfWeek.setDate(now.getDate() + (7 - now.getDay()));
 
     return {
+      atrasados: allEvents.filter(e => {
+        const d = parseDate(e.data);
+        d.setHours(0,0,0,0);
+        return d.getTime() < now.getTime();
+      }),
       hoje: allEvents.filter(e => {
-        const d = new Date(e.data);
+        const d = parseDate(e.data);
         d.setHours(0,0,0,0);
         return d.getTime() === now.getTime();
       }),
       amanha: allEvents.filter(e => {
-        const d = new Date(e.data);
+        const d = parseDate(e.data);
         d.setHours(0,0,0,0);
         return d.getTime() === tomorrow.getTime();
       }),
       estaSemana: allEvents.filter(e => {
-        const d = new Date(e.data);
+        const d = parseDate(e.data);
         d.setHours(0,0,0,0);
         return d.getTime() > tomorrow.getTime() && d.getTime() <= endOfWeek.getTime();
       }),
       futuro: allEvents.filter(e => {
-        const d = new Date(e.data);
+        const d = parseDate(e.data);
         d.setHours(0,0,0,0);
         return d.getTime() > endOfWeek.getTime();
       })
@@ -99,19 +112,35 @@ export const Agenda: React.FC<AgendaProps> = ({ onViewProcess }) => {
 
   const isUrl = (str: string) => /^https?:\/\//.test(str);
 
-  const EventCard: React.FC<{ event: AgendaEvent }> = ({ event }) => (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition-all group shadow-sm flex items-start gap-4">
+  const EventCard: React.FC<{ event: AgendaEvent; isOverdue?: boolean }> = ({ event, isOverdue }) => (
+    <div className={`bg-slate-900 border rounded-xl p-4 hover:border-slate-600 transition-all group shadow-sm flex items-start gap-4 
+      ${isOverdue ? 'border-red-900/50 bg-red-900/5' : 'border-slate-800'}`}>
+      
       <div className={`p-3 rounded-lg shrink-0 ${event.tipo === 'PRAZO' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'}`}>
         {event.tipo === 'PRAZO' ? <Clock size={20} /> : <Gavel size={20} />}
       </div>
+
       <div className="flex-1 min-w-0">
         <div className="flex justify-between items-start mb-1">
-          <h4 className="font-bold text-slate-100 text-sm truncate">{event.descricao}</h4>
-          <span className="text-[10px] font-mono text-slate-500 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-             {new Date(event.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-          </span>
+          <div className="flex flex-col">
+            <h4 className="font-bold text-slate-100 text-sm truncate">{event.descricao}</h4>
+            <span className={`text-[9px] font-bold uppercase tracking-wider ${event.tipo === 'PRAZO' ? 'text-amber-500' : 'text-blue-500'}`}>
+              {event.tipo === 'PRAZO' ? 'Prazo Processual' : 'Audiência'}
+            </span>
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${isOverdue ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-slate-950 text-slate-500 border-slate-800'}`}>
+               {parseDate(event.data).toLocaleDateString('pt-BR')}
+            </span>
+            {event.data.includes('T') && (
+              <span className="text-[10px] font-mono text-slate-500">
+                {new Date(event.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
         </div>
-        <p className="text-xs text-slate-400 mb-2 flex items-center gap-1.5">
+
+        <p className="text-xs text-slate-400 mb-2 flex items-center gap-1.5 mt-2">
           <Scale size={12} className="text-slate-600" /> {event.processoTitulo}
         </p>
         
@@ -152,17 +181,21 @@ export const Agenda: React.FC<AgendaProps> = ({ onViewProcess }) => {
     </div>
   );
 
-  const Section: React.FC<{ title: string; events: AgendaEvent[]; color: string }> = ({ title, events, color }) => {
+  const Section: React.FC<{ title: string; events: AgendaEvent[]; color: string; isOverdue?: boolean }> = ({ title, events, color, isOverdue }) => {
     if (events.length === 0) return null;
     return (
       <div className="space-y-4 animate-fade-in">
         <div className="flex items-center gap-3">
           <div className={`w-1 h-6 rounded-full ${color}`}></div>
-          <h3 className="font-bold text-slate-200 uppercase tracking-widest text-xs">{title}</h3>
-          <span className="bg-slate-900 text-slate-500 text-[10px] px-2 py-0.5 rounded-full border border-slate-800 font-bold">{events.length}</span>
+          <h3 className={`font-bold uppercase tracking-widest text-xs ${isOverdue ? 'text-red-400' : 'text-slate-200'}`}>
+            {title}
+          </h3>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${isOverdue ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-slate-900 text-slate-500 border-slate-800'}`}>
+            {events.length}
+          </span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {events.map(event => <EventCard key={`${event.tipo}-${event.id}`} event={event} />)}
+          {events.map(event => <EventCard key={`${event.tipo}-${event.id}`} event={event} isOverdue={isOverdue} />)}
         </div>
       </div>
     );
@@ -178,13 +211,9 @@ export const Agenda: React.FC<AgendaProps> = ({ onViewProcess }) => {
           <p className="text-slate-500">Compromissos e prazos de todos os seus casos</p>
         </div>
         <div className="bg-slate-900 px-4 py-2 rounded-xl border border-slate-800 flex items-center gap-3">
-           <Bell size={18} className="text-slate-500 animate-pulse" />
+           <Bell size={18} className="text-slate-500" />
            <span className="text-sm font-medium text-slate-300">
-             {allEvents.filter(e => {
-                const d = new Date(e.data);
-                const now = new Date();
-                return d.getDate() === now.getDate() && d.getMonth() === now.getMonth();
-             }).length} compromissos hoje
+             {groupedEvents.hoje.length} compromissos hoje
            </span>
         </div>
       </header>
@@ -199,9 +228,10 @@ export const Agenda: React.FC<AgendaProps> = ({ onViewProcess }) => {
         </div>
       ) : (
         <div className="space-y-12">
-          <Section title="Hoje" events={groupedEvents.hoje} color="bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
+          <Section title="Vencidos / Atrasados" events={groupedEvents.atrasados} color="bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.5)]" isOverdue />
+          <Section title="Hoje" events={groupedEvents.hoje} color="bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
           <Section title="Amanhã" events={groupedEvents.amanha} color="bg-amber-500" />
-          <Section title="Esta Semana" events={groupedEvents.estaSemana} color="bg-blue-500" />
+          <Section title="Esta Semana" events={groupedEvents.estaSemana} color="bg-indigo-500" />
           <Section title="Próximos Compromissos" events={groupedEvents.futuro} color="bg-slate-700" />
         </div>
       )}
