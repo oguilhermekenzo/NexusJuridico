@@ -12,19 +12,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ cases }) => {
   const activeCases = cases.filter(c => c.status === ProcessoStatus.ATIVO).length;
   const totalValue = cases.reduce((acc, curr) => acc + (curr.valorCausa || 0), 0);
   
-  // Cálculo de Produtividade Baseado em Prazos
   const productivity = useMemo(() => {
     let totalPrazos = 0;
     let prazosConcluidos = 0;
-
     cases.forEach(c => {
       if (c.prazos) {
         totalPrazos += c.prazos.length;
         prazosConcluidos += c.prazos.filter(p => p.status === 'CONCLUIDO').length;
       }
     });
-
-    if (totalPrazos === 0) return 100; // Agenda limpa = 100% produtivo
+    if (totalPrazos === 0) return 100;
     return Math.round((prazosConcluidos / totalPrazos) * 100);
   }, [cases]);
 
@@ -65,24 +62,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ cases }) => {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatsCard 
-          title="Processos Ativos" 
-          value={activeCases} 
-          icon={Scale} 
-          color="bg-blue-600"
-        />
-        <StatsCard 
-          title="Valor em Causa" 
-          value={`R$ ${totalValue.toLocaleString('pt-BR')}`} 
-          icon={DollarSign} 
-          color="bg-green-600"
-        />
-        <StatsCard 
-          title="Prazos Críticos" 
-          value={cases.filter(c => c.prazoFatal).length} 
-          icon={AlertTriangle} 
-          color="bg-red-600"
-        />
+        <StatsCard title="Processos Ativos" value={activeCases} icon={Scale} color="bg-blue-600" />
+        <StatsCard title="Valor em Causa" value={`R$ ${totalValue.toLocaleString('pt-BR')}`} icon={DollarSign} color="bg-green-600" />
+        <StatsCard title="Prazos Críticos" value={cases.filter(c => c.prazoFatal).length} icon={AlertTriangle} color="bg-red-600" />
         <StatsCard 
           title="Produtividade" 
           value={`${productivity}%`} 
@@ -100,33 +82,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ cases }) => {
               <ResponsiveContainer width="100%" height={340}>
                 <BarChart data={areaData} margin={{ bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fill: '#f8fafc', fontSize: 11}} // Font Color to White
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fill: '#f8fafc', fontSize: 11}} // Font Color to White
-                  />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 11}} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 11}} />
                   <Tooltip 
                     cursor={{fill: '#1e293b'}} 
                     contentStyle={{borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc'}}
                     itemStyle={{ color: '#f8fafc' }}
                   />
-                  <Legend 
-                    wrapperStyle={{ paddingTop: '20px', color: '#f8fafc' }} 
-                    formatter={(value) => <span style={{ color: '#f8fafc', fontSize: '12px' }}>{value}</span>}
-                  />
+                  <Legend wrapperStyle={{ paddingTop: '20px' }} formatter={(value) => <span style={{ color: '#94a3b8', fontSize: '12px' }}>{value}</span>} />
                   <Bar dataKey="count" name="Total de Processos" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-600 italic text-sm">
-                Sem dados de área para exibir.
-              </div>
+              <div className="h-full flex items-center justify-center text-slate-600 italic text-sm">Sem dados de área para exibir.</div>
             )}
           </div>
         </div>
@@ -137,69 +105,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ cases }) => {
             {statusData.length > 0 ? (
               <ResponsiveContainer width="100%" height={340}>
                 <PieChart>
-                  <Pie
-                    data={statusData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    {statusData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
+                  <Pie data={statusData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" stroke="none">
+                    {statusData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                   </Pie>
-                  <Tooltip 
-                    contentStyle={{borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc'}}
-                    itemStyle={{ color: '#f8fafc' }}
-                  />
-                  <Legend 
-                    verticalAlign="bottom" 
-                    align="center" 
-                    layout="horizontal"
-                    iconType="circle"
-                    formatter={(value) => <span style={{ color: '#f8fafc', fontSize: '12px' }}>{value}</span>}
-                  />
+                  <Tooltip contentStyle={{borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc'}} />
+                  <Legend verticalAlign="bottom" align="center" layout="horizontal" iconType="circle" formatter={(value) => <span style={{ color: '#94a3b8', fontSize: '12px' }}>{value}</span>} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-600 italic text-sm">
-                Sem dados de status para exibir.
-              </div>
+              <div className="h-full flex items-center justify-center text-slate-600 italic text-sm">Sem dados de status para exibir.</div>
             )}
           </div>
-        </div>
-      </div>
-
-      <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-        <div className="p-6 border-b border-slate-800">
-          <h3 className="text-lg font-semibold text-slate-200">Atividades Recentes</h3>
-        </div>
-        <div className="divide-y divide-slate-800">
-          {cases.length > 0 ? (
-            cases.slice(0, 5).map((c, i) => (
-              <div key={i} className="p-4 flex items-center justify-between hover:bg-slate-800 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
-                    <Clock size={18} />
-                  </div>
-                  <div>
-                    <p className="font-medium text-slate-200">{c.titulo}</p>
-                    <p className="text-xs text-slate-500">{c.numero}</p>
-                  </div>
-                </div>
-                <span className="text-sm font-medium text-slate-400 bg-slate-950 px-3 py-1 rounded-full border border-slate-800">
-                  {new Date(c.dataDistribuicao).toLocaleDateString('pt-BR')}
-                </span>
-              </div>
-            ))
-          ) : (
-            <div className="p-8 text-center text-slate-600 italic">
-              Nenhuma atividade recente registrada.
-            </div>
-          )}
         </div>
       </div>
     </div>
