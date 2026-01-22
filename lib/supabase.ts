@@ -1,14 +1,16 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 /**
  * CONFIGURAÇÃO DO SUPABASE
- * O sistema utiliza exclusivamente as variáveis injetadas via Vite/process.env.
- * Caso as variáveis não sejam encontradas, o sistema operará em modo LocalStorage.
+ * Utiliza o padrão import.meta.env (nativo do Vite) para ler variáveis prefixadas com VITE_.
  */
 
-const supabaseUrl = process.env.SUPABASE_URL || "";
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "";
+// Acesso seguro ao import.meta.env para evitar erros de runtime
+// Fixed TypeScript errors by explicitly typing 'env' as 'any' to allow access to VITE_ properties
+const env: any = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : {};
+
+const supabaseUrl = env.VITE_SUPABASE_URL || "";
+const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY || "";
 
 // Verificação de configuração mínima para habilitar sincronização em nuvem
 export const isSupabaseConfigured = 
@@ -17,17 +19,15 @@ export const isSupabaseConfigured =
   !!supabaseAnonKey;
 
 if (isSupabaseConfigured) {
-  console.info("Juzk SAJ: Conexão Supabase configurada com sucesso via .env");
+  console.info("Juzk SAJ: Conexão Supabase estabelecida via import.meta.env");
 } else {
-  console.warn("Juzk SAJ: Credenciais de nuvem ausentes. O sistema utilizará LocalStorage (persistência local).");
+  console.warn("Juzk SAJ: Variáveis VITE_SUPABASE não encontradas. O sistema operará em modo LocalStorage.");
 }
 
 /**
  * Inicialização do cliente Supabase.
- * Se as chaves estiverem vazias, usamos placeholders para não quebrar a compilação,
- * mas as chamadas de API falharão graciosamente enquanto o modo LocalStorage assume o controle.
  */
 export const supabase = createClient(
-  supabaseUrl || 'https://missing-url-in-env.supabase.co',
-  supabaseAnonKey || 'missing-key-in-env'
+  supabaseUrl || 'https://placeholder-url.supabase.co',
+  supabaseAnonKey || 'placeholder-key'
 );
