@@ -1,11 +1,18 @@
 
-import React, { useMemo } from 'react';
-import { DollarSign, TrendingUp, TrendingDown, Clock, Download, AlertCircle } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { DollarSign, TrendingUp, TrendingDown, Clock, Download, AlertCircle, Loader2 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, CartesianGrid, YAxis } from 'recharts';
 import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
 
-export const Finance: React.FC = () => {
+interface FinanceProps {
+  showNotify?: (message: string, type?: 'success' | 'error' | 'info') => void;
+}
+
+export const Finance: React.FC<FinanceProps> = ({ showNotify }) => {
   const { cases, timesheet } = useData();
+  const { office } = useAuth();
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const financialMetrics = useMemo(() => {
     let currentMonthRevenue = 0;
@@ -65,7 +72,7 @@ export const Finance: React.FC = () => {
   }, [cases]);
 
   const recentTimesheet = useMemo(() => {
-    return timesheet.slice(0, 5).map(entry => {
+    return timesheet.slice(0, 10).map(entry => {
       const processo = cases.find(c => c.id === entry.processoId);
       return {
         ...entry,
@@ -74,6 +81,91 @@ export const Finance: React.FC = () => {
     });
   }, [timesheet, cases]);
 
+  const handleDownloadReport = async () => {
+    setIsDownloading(true);
+    try {
+      // Importação dinâmica das bibliotecas PDF
+      const { jsPDF } = await import('https://esm.sh/jspdf@2.5.1');
+      const { default: autoTable } = await import('https://esm.sh/jspdf-autotable@3.8.2');
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const today = new Date().toLocaleDateString('pt-BR');
+
+      // Cabeçalho
+      doc.setFillColor(15, 23, 42); // slate-950
+      doc.rect(0, 0, pageWidth, 40, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(22);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Relatório Financeiro', 15, 20);
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(office?.name || 'Escritório Digital', 15, 28);
+      doc.text(`Data de Emissão: ${today}`, pageWidth - 15, 20, { align: 'right' });
+
+      // Seção de Métricas
+      doc.setTextColor(51, 65, 85); // slate-700
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Resumo Mensal', 15, 55);
+
+      autoTable(doc, {
+        startY: 60,
+        head: [['Métrica', 'Valor']],
+        body: [
+          ['Receita (Mês Atual)', `R$ ${financialMetrics.currentMonthRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`],
+          ['Despesas (Mês Atual)', `R$ ${financialMetrics.currentMonthExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`],
+          ['Saldo Operacional', `R$ ${(financialMetrics.currentMonthRevenue - financialMetrics.currentMonthExpense).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`],
+          ['Contratos Fixos Ativos', `R$ ${financialMetrics.totalHonorariosContratuais.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]
+        ],
+        theme: 'striped',
+        headStyles: { fillColor: [59, 130, 246] }, // blue-600
+        styles: { fontSize: 10 }
+      });
+
+      // Seção de Atividades Recentes
+      doc.setFontSize(14);
+      doc.text('Lançamentos de Timesheet Recentes', 15, (doc as any).lastAutoTable.finalY + 15);
+
+      const timesheetBody = recentTimesheet.map(t => [
+        new Date(t.data).toLocaleDateString('pt-BR'),
+        t.advogado,
+        t.processoTitulo,
+        t.descricao,
+        `${t.horas.toFixed(1)}h`
+      ]);
+
+      autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 20,
+        head: [['Data', 'Advogado', 'Processo', 'Descrição', 'Horas']],
+        body: timesheetBody,
+        theme: 'grid',
+        headStyles: { fillColor: [15, 23, 42] },
+        styles: { fontSize: 8 }
+      });
+
+      // Rodapé
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(`Página ${i} de ${pageCount} - Gerado por Juzk SAJ IA`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+      }
+
+      doc.save(`relatorio_financeiro_${office?.name || 'escritorio'}_${new Date().toISOString().split('T')[0]}.pdf`);
+      showNotify?.("Relatório gerado com sucesso!", "success");
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      showNotify?.("Ocorreu um erro ao gerar o relatório.", "error");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in pb-10">
       <header className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
@@ -81,8 +173,13 @@ export const Finance: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-100">Gestão Financeira Integrada</h1>
           <p className="text-slate-500">Consolidado de receitas e despesas dos processos</p>
         </div>
-        <button className="bg-slate-900 border border-slate-800 text-slate-300 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-800 hover:text-white transition-colors">
-          <Download size={18} /> Relatório Financeiro
+        <button 
+          onClick={handleDownloadReport}
+          disabled={isDownloading}
+          className="bg-slate-900 border border-slate-800 text-slate-300 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-800 hover:text-white transition-colors disabled:opacity-50"
+        >
+          {isDownloading ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
+          {isDownloading ? 'Gerando...' : 'Relatório Financeiro'}
         </button>
       </header>
 

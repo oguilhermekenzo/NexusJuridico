@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { LayoutDashboard, Scale, FileText, BrainCircuit, DollarSign, Settings, Users, Briefcase, BookOpen, Lock, Calendar, Database, Building2 } from 'lucide-react';
+import { LayoutDashboard, Scale, FileText, BrainCircuit, DollarSign, Settings, Users, Briefcase, BookOpen, Lock, Calendar, Database, Building2, Terminal } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -10,8 +10,9 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) => {
-  const { office } = useAuth();
+  const { office, user } = useAuth();
   const [dbStatus, setDbStatus] = useState<'online' | 'offline' | 'checking'>('checking');
+  const isDev = user?.id === 'dev-user-master';
 
   useEffect(() => {
     const checkConn = async () => {
@@ -34,7 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
     { id: 'documents', label: 'GED', icon: FileText, isDevelopment: true },
     { id: 'ai-tools', label: 'IA Jurídica', icon: BrainCircuit },
     { id: 'finance', label: 'Financeiro', icon: DollarSign },
-    { id: 'admin', label: 'Administrativo', icon: Briefcase, isDevelopment: true },
+    { id: 'admin', label: 'Administrativo', icon: Briefcase, isDevelopment: !isDev },
   ];
 
   return (
@@ -88,6 +89,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
             </button>
           );
         })}
+
+        {/* Menu Developer condicional */}
+        {isDev && (
+          <button
+            onClick={() => onChangeView('developer')}
+            className={`w-full group relative flex flex-col items-start gap-1 px-4 py-3 rounded-xl transition-all duration-300 mt-4 border border-dashed border-blue-500/30 ${
+              currentView === 'developer'
+                ? 'bg-blue-900/40 text-blue-400 border-blue-500/50'
+                : 'hover:bg-blue-900/20 hover:text-blue-300'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Terminal size={20} />
+              <span className="font-bold tracking-tight">Developer</span>
+            </div>
+          </button>
+        )}
       </nav>
 
       <div className="p-4 border-t border-slate-800 space-y-2">

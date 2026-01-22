@@ -8,11 +8,12 @@ import { Finance } from './components/Finance';
 import { Clients } from './components/Clients';
 import { Theses } from './components/Theses';
 import { Agenda } from './components/Agenda';
+import { Admin } from './components/Admin';
 import { Login } from './components/Login';
 import { AreaDireito, CustomFieldConfig } from './types';
 import { DataProvider, useData } from './contexts/DataContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { Settings, Database, Trash2, Sparkles, LogOut, Loader2, Building2, CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
+import { Settings, Database, Trash2, Sparkles, LogOut, Loader2, Building2, CheckCircle2, AlertCircle, Info, X, Terminal, Cpu } from 'lucide-react';
 
 // Componente de Notificação (Toast)
 const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'error' | 'info', onClose: () => void }) => {
@@ -112,7 +113,8 @@ const AppContent: React.FC = () => {
       );
       case 'theses': return <Theses showNotify={showNotify} />;
       case 'ai-tools': return <AITools />;
-      case 'finance': return <Finance />;
+      case 'finance': return <Finance showNotify={showNotify} />;
+      case 'admin': return <Admin showNotify={showNotify} />;
       case 'settings': return (
         <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-20">
           <h1 className="text-3xl font-bold text-slate-100 flex items-center gap-2"><Settings className="text-slate-400" /> Configurações</h1>
@@ -132,21 +134,47 @@ const AppContent: React.FC = () => {
               </div>
             </div>
           </div>
-
+        </div>
+      );
+      case 'developer': return (
+        <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-20">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <Terminal className="text-blue-500" /> Developer Mode
+            </h1>
+            <div className="flex items-center gap-2 bg-blue-900/30 text-blue-400 px-4 py-1.5 rounded-full border border-blue-500/30 text-xs font-bold uppercase tracking-widest animate-pulse">
+              <Cpu size={14} /> Sistema Autenticado via F2
+            </div>
+          </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-              <h3 className="font-bold text-lg mb-4 text-slate-200 flex items-center gap-2"><Sparkles size={20} className="text-indigo-500" /> Demonstração</h3>
-              <p className="text-sm text-slate-500 mb-6">Popular o banco de dados com dados fictícios para teste de funcionalidades.</p>
-              <button onClick={handleSeedData} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-xl font-bold text-sm transition-all shadow-lg shadow-indigo-900/40 flex items-center justify-center gap-2">
+            <div className="bg-slate-900 p-8 rounded-2xl border border-blue-500/20 shadow-2xl shadow-blue-950/20">
+              <h3 className="font-bold text-lg mb-4 text-white flex items-center gap-2">
+                <Sparkles size={20} className="text-indigo-500" /> Geração de Massa de Testes
+              </h3>
+              <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+                Preenche automaticamente todos os módulos (Clientes, Processos, Financeiro, Agenda) com dados realistas para demonstração e debug.
+              </p>
+              <button 
+                onClick={handleSeedData} 
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/40 flex items-center justify-center gap-2"
+              >
                 <Database size={16} /> POPULAR DADOS FAKES
               </button>
             </div>
 
-            <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-              <h3 className="font-bold text-lg mb-4 text-slate-200 flex items-center gap-2"><Trash2 size={20} className="text-red-500" /> Manutenção</h3>
-              <p className="text-sm text-slate-500 mb-6">Limpar todos os dados deste escritório. Esta ação é irreversível.</p>
-              <button onClick={() => { if(isConfirmingClear) handleClearData(); else setIsConfirmingClear(true); }} className={`w-full py-4 rounded-xl font-bold text-sm transition-all border ${isConfirmingClear ? "bg-red-600 border-red-500 text-white" : "bg-slate-950 border-slate-800 text-red-500"}`}>
-                {isConfirmingClear ? "CONFIRMAR EXCLUSÃO" : "LIMPAR BANCO DE DADOS"}
+            <div className="bg-slate-900 p-8 rounded-2xl border border-red-500/20 shadow-2xl shadow-red-950/20">
+              <h3 className="font-bold text-lg mb-4 text-white flex items-center gap-2">
+                <Trash2 size={20} className="text-red-500" /> Hard Reset do Banco
+              </h3>
+              <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+                Apaga absolutamente todos os registros associados a este escritório. Use com cautela extrema no ambiente de produção.
+              </p>
+              <button 
+                onClick={() => { if(isConfirmingClear) handleClearData(); else setIsConfirmingClear(true); }} 
+                className={`w-full py-4 rounded-xl font-bold text-sm transition-all border ${isConfirmingClear ? "bg-red-600 border-red-500 text-white shadow-lg shadow-red-900/40" : "bg-slate-950 border-slate-800 text-red-500 hover:border-red-500/50"}`}
+              >
+                {isConfirmingClear ? "CONFIRMAR EXCLUSÃO IMEDIATA" : "LIMPAR BANCO DE DADOS"}
               </button>
             </div>
           </div>

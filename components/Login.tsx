@@ -6,15 +6,12 @@ import { useAuth } from '../contexts/AuthContext';
 
 export const Login: React.FC = () => {
   const { loginAsDev } = useAuth();
-  const [isRegistering, setIsRegistering] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Estados para formulário padrão
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [officeName, setOfficeName] = useState('');
-  const [fullName, setFullName] = useState('');
 
   // Estados para o Backdoor Dev
   const [showDevPanel, setShowDevPanel] = useState(false);
@@ -61,35 +58,11 @@ export const Login: React.FC = () => {
     setError(null);
 
     try {
-      if (isRegistering) {
-        const { data: office, error: officeError } = await supabase
-          .from('offices')
-          .insert([{ name: officeName }])
-          .select()
-          .single();
-
-        if (officeError) throw officeError;
-
-        const { error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              office_id: office.id,
-              full_name: fullName
-            }
-          }
-        });
-
-        if (signUpError) throw signUpError;
-        setError("Escritório criado! Verifique seu e-mail para confirmar.");
-      } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        if (signInError) throw signInError;
-      }
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      if (signInError) throw signInError;
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -133,56 +106,35 @@ export const Login: React.FC = () => {
 
         <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-2xl relative">
           <form onSubmit={handleAuth} className="space-y-4">
-            {isRegistering && (
-              <>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Nome do Escritório</label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                    <input required value={officeName} onChange={e => setOfficeName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-white focus:ring-2 focus:ring-blue-600 outline-none" placeholder="Ex: Silva & Advogados" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Seu Nome Completo</label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                    <input required value={fullName} onChange={e => setFullName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-white focus:ring-2 focus:ring-blue-600 outline-none" placeholder="João da Silva" />
-                  </div>
-                </div>
-              </>
-            )}
-
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">E-mail Profissional</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-white focus:ring-2 focus:ring-blue-600 outline-none" placeholder="advogado@exemplo.com" />
+              <div className="relative group">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" size={18} />
+                <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-white focus:ring-2 focus:ring-blue-600 outline-none transition-all" />
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Senha</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-white focus:ring-2 focus:ring-blue-600 outline-none" placeholder="••••••••" />
+              <div className="relative group">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" size={18} />
+                <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-white focus:ring-2 focus:ring-blue-600 outline-none transition-all" />
               </div>
             </div>
 
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-lg text-center animate-fade-in">
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-lg text-center animate-fade-in font-bold">
                 {error}
               </div>
             )}
 
             <button disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-blue-900/40 flex items-center justify-center gap-2">
-              {loading ? <Loader2 className="animate-spin" size={20} /> : isRegistering ? 'Criar Sistema' : 'Entrar no Sistema'}
+              {loading ? <Loader2 className="animate-spin" size={20} /> : 'Entrar no Sistema'}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <button onClick={() => setIsRegistering(!isRegistering)} className="text-sm text-slate-400 hover:text-blue-400 transition-colors">
-              {isRegistering ? 'Já possui um escritório? Entre aqui' : 'Novo por aqui? Crie seu escritório digital'}
-            </button>
+          <div className="mt-8 text-center text-xs text-slate-600 font-medium">
+            Registro de novos escritórios desativado. Entre em contato com a administração.
           </div>
         </div>
         <p className="text-center text-slate-600 text-xs mt-8">© 2024 Juzk - Gestão Jurídica Inteligente em Nuvem</p>
