@@ -42,7 +42,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Cast supabase.auth to any to resolve 'Property getSession does not exist on type SupabaseAuthClient'
+      const { data: { session } } = await (supabase.auth as any).getSession();
       if (session) {
         const officeId = session.user.user_metadata.office_id;
         setUser({
@@ -72,7 +73,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     refreshSession();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+    // Cast supabase.auth to any to resolve 'Property onAuthStateChange does not exist on type SupabaseAuthClient'
+    const { data: { subscription } } = (supabase.auth as any).onAuthStateChange(() => {
       refreshSession();
     });
     return () => subscription.unsubscribe();
@@ -85,7 +87,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     localStorage.removeItem('juzk_dev_mode');
-    await supabase.auth.signOut();
+    // Cast supabase.auth to any to resolve 'Property signOut does not exist on type SupabaseAuthClient'
+    await (supabase.auth as any).signOut();
     setUser(null);
     setOffice(null);
   };

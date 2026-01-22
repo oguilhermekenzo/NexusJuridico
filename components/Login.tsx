@@ -58,7 +58,8 @@ export const Login: React.FC = () => {
     setError(null);
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      // Cast supabase.auth to any to resolve 'Property signInWithPassword does not exist on type SupabaseAuthClient'
+      const { error: signInError } = await (supabase.auth as any).signInWithPassword({
         email,
         password
       });

@@ -2,29 +2,32 @@
 import { createClient } from '@supabase/supabase-js';
 
 /**
- * Nota de Segurança: Para não subir as chaves para o Git:
- * 1. Crie um arquivo .env na raiz do seu projeto local.
- * 2. Adicione SUPABASE_URL e SUPABASE_ANON_KEY lá.
- * 3. O código abaixo prioriza o .env, mas usa as suas chaves reais como fallback 
- *    para que o sistema funcione agora no seu ambiente de visualização.
+ * CONFIGURAÇÃO DO SUPABASE
+ * O sistema utiliza exclusivamente as variáveis injetadas via Vite/process.env.
+ * Caso as variáveis não sejam encontradas, o sistema operará em modo LocalStorage.
  */
 
-const defaultUrl = 'https://jltvtleovsdknhdyhpzv.supabase.co';
-const defaultKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsdHZ0bGVvdnNka25oZHlocHp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwMDY3NzUsImV4cCI6MjA4NDU4Mjc3NX0.Z84FpgTSOy4JCCsA_x4rQQo0AwWnUzBW_5AKsVWQHjs';
+const supabaseUrl = process.env.SUPABASE_URL || "";
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "";
 
-// O Vite injeta essas variáveis se elas estiverem configuradas no ambiente
-const supabaseUrl = process.env.SUPABASE_URL || defaultUrl;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || defaultKey;
-
-// Verifica se as credenciais são as de exemplo/placeholder ou reais
+// Verificação de configuração mínima para habilitar sincronização em nuvem
 export const isSupabaseConfigured = 
-  supabaseUrl !== '' && 
-  supabaseUrl.includes('supabase.co');
+  !!supabaseUrl && 
+  supabaseUrl.startsWith('http') && 
+  !!supabaseAnonKey;
 
-if (!isSupabaseConfigured) {
-  console.warn(
-    "Juzk SAJ: Configuração de nuvem incompleta. Verifique as variáveis de ambiente."
-  );
+if (isSupabaseConfigured) {
+  console.info("Juzk SAJ: Conexão Supabase configurada com sucesso via .env");
+} else {
+  console.warn("Juzk SAJ: Credenciais de nuvem ausentes. O sistema utilizará LocalStorage (persistência local).");
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+/**
+ * Inicialização do cliente Supabase.
+ * Se as chaves estiverem vazias, usamos placeholders para não quebrar a compilação,
+ * mas as chamadas de API falharão graciosamente enquanto o modo LocalStorage assume o controle.
+ */
+export const supabase = createClient(
+  supabaseUrl || 'https://missing-url-in-env.supabase.co',
+  supabaseAnonKey || 'missing-key-in-env'
+);
