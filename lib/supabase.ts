@@ -1,33 +1,54 @@
+
 import { createClient } from '@supabase/supabase-js';
 
 /**
- * CONFIGURAÇÃO DO SUPABASE
- * Utiliza o padrão import.meta.env (nativo do Vite) para ler variáveis prefixadas com VITE_.
+ * Valida se uma string parece ser uma chave técnica real (sem espaços, tamanho mínimo)
  */
+const isTechnicalKey = (val: string | null | undefined): boolean => {
+  if (!val) return false;
+  const s = val.trim();
+  // Chaves reais não costumam ter espaços e têm tamanho razoável
+  return s.length > 15 && !s.includes(" ") && !s.includes("Quero");
+};
 
-// Acesso seguro ao import.meta.env para evitar erros de runtime
-// Fixed TypeScript errors by explicitly typing 'env' as 'any' to allow access to VITE_ properties
-const env: any = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : {};
+export const getSafeEnv = (key: string): string => {
+  // 1. Prioridade absoluta: LocalStorage (salvo pelo usuário na interface)
+  const saved = localStorage.getItem(`juzk_env_${key}`);
+  if (saved && saved.trim() !== "") return saved.trim();
 
-const supabaseUrl = env.VITE_SUPABASE_URL || "";
-const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY || "";
+  // 2. Fallback: process.env (Vite Define) - mas só se parecer uma chave válida
+  try {
+    let envVal = "";
+    if (key === 'API_KEY') envVal = process.env.API_KEY || "";
+    if (key === 'VITE_SUPABASE_URL') envVal = process.env.VITE_SUPABASE_URL || "";
+    if (key === 'VITE_SUPABASE_ANON_KEY') envVal = process.env.VITE_SUPABASE_ANON_KEY || "";
 
-// Verificação de configuração mínima para habilitar sincronização em nuvem
+    if (isTechnicalKey(envVal)) return envVal;
+  } catch (e) {
+    // Silencioso
+  }
+  
+  return "";
+};
+
+const supabaseUrl = getSafeEnv('VITE_SUPABASE_URL');
+const supabaseAnonKey = getSafeEnv('VITE_SUPABASE_ANON_KEY');
+
 export const isSupabaseConfigured = 
-  !!supabaseUrl && 
+  isTechnicalKey(supabaseUrl) && 
   supabaseUrl.startsWith('http') && 
-  !!supabaseAnonKey;
-
-if (isSupabaseConfigured) {
-  console.info("Juzk SAJ: Conexão Supabase estabelecida via import.meta.env");
-} else {
-  console.warn("Juzk SAJ: Variáveis VITE_SUPABASE não encontradas. O sistema operará em modo LocalStorage.");
-}
+  isTechnicalKey(supabaseAnonKey);
 
 /**
- * Inicialização do cliente Supabase.
+ * Inicializa o cliente Supabase.
  */
 export const supabase = createClient(
-  supabaseUrl || 'https://placeholder-url.supabase.co',
+  supabaseUrl || 'https://juzk-placeholder.supabase.co',
   supabaseAnonKey || 'placeholder-key'
 );
+
+if (isSupabaseConfigured) {
+  console.info("Juzk SAJ: Conexão Supabase configurada com sucesso.");
+} else {
+  console.warn("Juzk SAJ: Chaves de conexão inválidas ou ausentes.");
+}

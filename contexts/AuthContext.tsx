@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { AppUser, Office } from '../types';
+import { AppUser, Office, UserRole } from '../types';
 
 interface AuthContextType {
   user: AppUser | null;
@@ -14,7 +14,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
-// IDs Fixos para o ambiente de desenvolvedor
 const DEV_OFFICE_ID = '00000000-0000-0000-0000-000000000000';
 const DEV_USER_ID = 'dev-user-master';
 
@@ -24,14 +23,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const refreshSession = async () => {
-    // 1. Verificar se há um login de desenvolvedor forçado no localStorage
     const isDev = localStorage.getItem('juzk_dev_mode') === 'true';
     if (isDev) {
       setUser({
         id: DEV_USER_ID,
         email: 'dev@juzk.ia',
         officeId: DEV_OFFICE_ID,
-        name: 'Desenvolvedor Master'
+        name: 'Desenvolvedor Master',
+        role: UserRole.SUPER_ADMIN
       });
       setOffice({
         id: DEV_OFFICE_ID,
@@ -42,24 +41,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      // Cast supabase.auth to any to resolve 'Property getSession does not exist on type SupabaseAuthClient'
       const { data: { session } } = await (supabase.auth as any).getSession();
       if (session) {
-        const officeId = session.user.user_metadata.office_id;
-        setUser({
-          id: session.user.id,
-          email: session.user.email!,
-          officeId: officeId,
-          name: session.user.user_metadata.full_name
-        });
-
-        const { data: officeData } = await supabase
-          .from('offices')
-          .select('*')
-          .eq('id', officeId)
+        // Busca perfil estendido
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*, offices(*)')
+          .eq('id', session.user.id)
           .single();
-        
-        if (officeData) setOffice(officeData);
+
+        if (profile) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email!,
+            officeId: profile.office_id,
+            name: profile.full_name,
+            role: (profile.role as UserRole) || UserRole.LAWYER
+          });
+          setOffice(profile.offices);
+        } else {
+          // Fallback se perfil ainda não existe (após signup)
+          setUser({
+            id: session.user.id,
+            email: session.user.email!,
+            officeId: session.user.user_metadata?.office_id,
+            name: session.user.user_metadata?.full_name,
+            role: UserRole.LAWYER
+          });
+        }
       } else {
         setUser(null);
         setOffice(null);
@@ -73,7 +82,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     refreshSession();
-    // Cast supabase.auth to any to resolve 'Property onAuthStateChange does not exist on type SupabaseAuthClient'
     const { data: { subscription } } = (supabase.auth as any).onAuthStateChange(() => {
       refreshSession();
     });
@@ -87,7 +95,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     localStorage.removeItem('juzk_dev_mode');
-    // Cast supabase.auth to any to resolve 'Property signOut does not exist on type SupabaseAuthClient'
     await (supabase.auth as any).signOut();
     setUser(null);
     setOffice(null);

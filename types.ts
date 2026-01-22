@@ -11,6 +11,13 @@ export enum AreaDireito {
   IMOBILIARIO = 'Imobiliário'
 }
 
+export enum UserRole {
+  SUPER_ADMIN = 'SUPER_ADMIN',
+  OFFICE_ADMIN = 'OFFICE_ADMIN',
+  LAWYER = 'LAWYER',
+  STAFF = 'STAFF'
+}
+
 export enum ProcessoStatus {
   ATIVO = 'Ativo',
   SUSPENSO = 'Suspenso',
@@ -29,9 +36,9 @@ export interface AppUser {
   email: string;
   officeId: string;
   name?: string;
+  role: UserRole;
 }
 
-// Added ContatoAssociado interface for Client management
 export interface ContatoAssociado {
   id: string;
   nome: string;
@@ -63,7 +70,6 @@ export interface Tese {
   dataCriacao: string;
 }
 
-// Added Prazo interface for Process management
 export interface Prazo {
   id: string;
   data: string;
@@ -71,7 +77,6 @@ export interface Prazo {
   status: 'PENDENTE' | 'CONCLUIDO';
 }
 
-// Added Audiencia interface for Process management
 export interface Audiencia {
   id: string;
   data: string;
@@ -80,7 +85,6 @@ export interface Audiencia {
   status: 'AGENDADA' | 'REALIZADA' | 'CANCELADA';
 }
 
-// Added Andamento interface for Process management
 export interface Andamento {
   id: string;
   data: string;
@@ -88,7 +92,6 @@ export interface Andamento {
   tipo: string;
 }
 
-// Added TransacaoProcesso interface for Process finance management
 export interface TransacaoProcesso {
   id: string;
   data: string;
@@ -98,7 +101,6 @@ export interface TransacaoProcesso {
   categoria: string;
 }
 
-// Updated Processo interface with specific types instead of any
 export interface Processo {
   id: string;
   office_id: string;
@@ -138,7 +140,6 @@ export interface TimesheetEntry {
   faturavel: boolean;
 }
 
-// Added CustomFieldConfig interface for dynamic field management
 export interface CustomFieldConfig {
   id: string;
   area: AreaDireito;

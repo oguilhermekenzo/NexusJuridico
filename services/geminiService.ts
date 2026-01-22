@@ -1,12 +1,19 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { AreaDireito } from "../types";
+import { getSafeEnv } from "../lib/supabase";
 
-// Always use process.env.API_KEY directly as a named parameter.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+/**
+ * Inicializa o cliente Gemini usando a chave obtida do ambiente ou do LocalStorage.
+ */
+const getAiClient = () => {
+  const apiKey = getSafeEnv('API_KEY');
+  return new GoogleGenAI({ apiKey });
+};
 
 export const summarizeIntimacao = async (text: string): Promise<{ summary: string; prazo: string | null; acao: string | null }> => {
   try {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Você é um assistente jurídico sênior. Analise o seguinte texto de uma publicação jurídica/intimação. 
@@ -27,14 +34,12 @@ export const summarizeIntimacao = async (text: string): Promise<{ summary: strin
       }
     });
 
-    // Use .text property and trim it before parsing.
     const jsonStr = response.text?.trim();
     if (!jsonStr) throw new Error("Sem resposta da IA");
     return JSON.parse(jsonStr);
-
   } catch (error) {
     console.error("Erro ao sumarizar:", error);
-    return { summary: "Erro ao processar resumo.", prazo: null, acao: null };
+    return { summary: "Erro: Processamento da IA indisponível. Verifique sua API KEY.", prazo: null, acao: null };
   }
 };
 
@@ -45,17 +50,14 @@ export const generateDraft = async (
   arguments_text: string
 ): Promise<string> => {
   try {
+    const ai = getAiClient();
     const prompt = `Atue como um advogado especialista em Direito ${area}.
     Redija uma minuta de ${type} profissional e bem fundamentada.
-    
     Fatos do caso: ${facts}
-    
     Argumentos/Teses principais a utilizar: ${arguments_text}
-    
     Estruture a peça com cabeçalho, fatos, direito e pedidos. Use linguagem jurídica formal e adequada.`;
 
     const response = await ai.models.generateContent({
-      // Upgraded to pro for complex writing tasks.
       model: 'gemini-3-pro-preview',
       contents: prompt,
     });
@@ -63,14 +65,14 @@ export const generateDraft = async (
     return response.text || "Não foi possível gerar a peça.";
   } catch (error) {
     console.error("Erro na geração de peça:", error);
-    return "Erro ao conectar com o serviço de IA.";
+    return "Erro de conexão com o Gemini. Certifique-se de que a API_KEY está configurada corretamente nas configurações.";
   }
 };
 
 export const researchJurisprudence = async (query: string): Promise<{ text: string; sources: { title: string; uri: string }[] }> => {
   try {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
-      // Upgraded to pro for complex reasoning/grounding tasks.
       model: 'gemini-3-pro-preview',
       contents: `Pesquise jurisprudências recentes e teses jurídicas sobre: "${query}". 
       Cite tribunais superiores (STJ, STF, TST) quando aplicável. 
@@ -83,7 +85,6 @@ export const researchJurisprudence = async (query: string): Promise<{ text: stri
     const text = response.text || "";
     const sources: { title: string; uri: string }[] = [];
     
-    // Extract website URLs from groundingChunks as per requirements.
     if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
       response.candidates[0].groundingMetadata.groundingChunks.forEach((chunk) => {
         if (chunk.web) {
@@ -96,57 +97,35 @@ export const researchJurisprudence = async (query: string): Promise<{ text: stri
     }
 
     return { text, sources };
-
   } catch (error) {
     console.error("Erro na pesquisa:", error);
-    return { text: "Erro ao realizar pesquisa jurídica.", sources: [] };
+    return { text: "Erro ao realizar pesquisa. Verifique sua API KEY.", sources: [] };
   }
 };
 
 export const askThesisAI = async (thesisContent: string, question: string, history: {role: string, text: string}[]): Promise<string> => {
   try {
-    const historyText = history.map(h => `${h.role === 'user' ? 'Usuário' : 'Assistente'}: ${h.text}`).join('\n');
-    
-    const prompt = `Você é um assistente jurídico especializado (Notebook AI). Seu objetivo é ajudar o advogado a analisar, melhorar ou entender a tese jurídica fornecida abaixo.
-    
-    CONTEXTO DA TESE:
-    """
-    ${thesisContent}
-    """
-    
-    HISTÓRICO DA CONVERSA:
-    ${historyText}
-    
-    PERGUNTA ATUAL DO USUÁRIO:
-    ${question}
-    
-    Responda de forma direta, técnica e útil.`;
+    const ai = getAiClient();
+    const prompt = `Você é um assistente jurídico especializado. Contexto da tese: ${thesisContent}. Pergunta: ${question}`;
 
     const response = await ai.models.generateContent({
-      // Upgraded to pro for advanced document analysis.
       model: 'gemini-3-pro-preview',
       contents: prompt,
     });
 
     return response.text || "Não foi possível gerar uma resposta.";
   } catch (error) {
-    console.error("Erro no Notebook AI:", error);
+    console.error("Erro no Notebook IA:", error);
     return "Erro ao processar sua pergunta.";
   }
 };
 
 export const generateThesisContent = async (title: string, description: string, area: string): Promise<string> => {
   try {
-    const prompt = `Escreva o conteúdo completo e detalhado de uma tese jurídica.
-    
-    Título: ${title}
-    Área: ${area}
-    Descrição/Resumo: ${description}
-    
-    O texto deve conter introdução, fundamentação legal, jurisprudência e conclusão.`;
+    const ai = getAiClient();
+    const prompt = `Escreva o conteúdo completo de uma tese jurídica: Título: ${title}, Área: ${area}, Descrição: ${description}`;
 
     const response = await ai.models.generateContent({
-      // Upgraded to pro for long-form legal drafting.
       model: 'gemini-3-pro-preview',
       contents: prompt,
     });

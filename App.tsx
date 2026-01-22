@@ -13,9 +13,9 @@ import { Login } from './components/Login';
 import { AreaDireito, CustomFieldConfig } from './types';
 import { DataProvider, useData } from './contexts/DataContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { Settings, Database, Trash2, Sparkles, LogOut, Loader2, Building2, CheckCircle2, AlertCircle, Info, X, Terminal, Cpu } from 'lucide-react';
+import { Settings, Database, Trash2, Sparkles, LogOut, Loader2, Building2, CheckCircle2, AlertCircle, Info, X, Terminal, Cpu, Save, Cloud, WifiOff } from 'lucide-react';
+import { isSupabaseConfigured, getSafeEnv } from './lib/supabase';
 
-// Componente de Notificação (Toast)
 const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'error' | 'info', onClose: () => void }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 4000);
@@ -46,11 +46,23 @@ const AppContent: React.FC = () => {
   const { cases, clearAllData, seedDemoData, loading: dataLoading } = useData();
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   
-  // Estado de Notificação
+  // Estados de Configuração (Sincronizados com o LocalStorage via getSafeEnv)
+  const [sbUrl, setSbUrl] = useState(getSafeEnv('VITE_SUPABASE_URL'));
+  const [sbKey, setSbKey] = useState(getSafeEnv('VITE_SUPABASE_ANON_KEY'));
+  const [geminiKey, setGeminiKey] = useState(getSafeEnv('API_KEY'));
+
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
 
   const showNotify = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setNotification({ message, type });
+  };
+
+  const handleSaveConfigs = () => {
+    localStorage.setItem('juzk_env_VITE_SUPABASE_URL', sbUrl.trim());
+    localStorage.setItem('juzk_env_VITE_SUPABASE_ANON_KEY', sbKey.trim());
+    localStorage.setItem('juzk_env_API_KEY', geminiKey.trim());
+    showNotify("Configurações salvas! Aplicando alterações...", "success");
+    setTimeout(() => window.location.reload(), 1000);
   };
 
   const handleSeedData = async () => {
@@ -84,7 +96,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center">
         <Loader2 className="text-blue-600 animate-spin mb-4" size={48} />
-        <p className="text-slate-500 font-medium">Carregando escritório...</p>
+        <p className="text-slate-500 font-medium">Autenticando...</p>
       </div>
     );
   }
@@ -117,20 +129,34 @@ const AppContent: React.FC = () => {
       case 'admin': return <Admin showNotify={showNotify} />;
       case 'settings': return (
         <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-20">
-          <h1 className="text-3xl font-bold text-slate-100 flex items-center gap-2"><Settings className="text-slate-400" /> Configurações</h1>
+          <header className="flex justify-between items-center">
+            <h1 className="text-3xl font-bold text-slate-100 flex items-center gap-2"><Settings className="text-slate-400" /> Configurações</h1>
+            <button 
+              onClick={handleSaveConfigs}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-900/40"
+            >
+              <Save size={18} /> Salvar Alterações
+            </button>
+          </header>
           
           <div className="bg-slate-900 p-8 rounded-2xl border border-slate-800">
-            <h3 className="font-bold text-xl text-white mb-6">Escritório Logado</h3>
+            <h3 className="font-bold text-xl text-white mb-6">Escritório Atual</h3>
             <div className="flex items-center gap-6 p-6 bg-slate-950 rounded-xl border border-slate-800">
               <div className="w-16 h-16 bg-blue-600/20 text-blue-500 rounded-2xl flex items-center justify-center">
                 <Building2 size={32} />
               </div>
-              <div>
+              <div className="flex-1">
                 <h4 className="text-xl font-bold text-white">{office?.name}</h4>
                 <p className="text-slate-500">{user.email}</p>
-                <button onClick={signOut} className="mt-4 flex items-center gap-2 text-red-500 hover:text-red-400 font-bold text-sm uppercase transition-colors">
-                  <LogOut size={16} /> Sair do Sistema
-                </button>
+                <div className="flex items-center gap-4 mt-4">
+                  <button onClick={signOut} className="flex items-center gap-2 text-red-500 hover:text-red-400 font-bold text-xs uppercase transition-colors">
+                    <LogOut size={14} /> Sair
+                  </button>
+                  <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase ${isSupabaseConfigured ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                    {isSupabaseConfigured ? <Cloud size={12} /> : <WifiOff size={12} />}
+                    {isSupabaseConfigured ? 'Conectado à Nuvem' : 'Modo Local (Offline)'}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -143,39 +169,83 @@ const AppContent: React.FC = () => {
               <Terminal className="text-blue-500" /> Developer Mode
             </h1>
             <div className="flex items-center gap-2 bg-blue-900/30 text-blue-400 px-4 py-1.5 rounded-full border border-blue-500/30 text-xs font-bold uppercase tracking-widest animate-pulse">
-              <Cpu size={14} /> Sistema Autenticado via F2
+              <Cpu size={14} /> F2 Auth
             </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-slate-900 p-8 rounded-2xl border border-blue-500/20 shadow-2xl shadow-blue-950/20">
+            <div className="bg-slate-900 p-8 rounded-2xl border border-blue-500/20 shadow-2xl">
               <h3 className="font-bold text-lg mb-4 text-white flex items-center gap-2">
-                <Sparkles size={20} className="text-indigo-500" /> Geração de Massa de Testes
+                <Sparkles size={20} className="text-indigo-500" /> Geração de Massa
               </h3>
-              <p className="text-sm text-slate-500 mb-6 leading-relaxed">
-                Preenche automaticamente todos os módulos (Clientes, Processos, Financeiro, Agenda) com dados realistas para demonstração e debug.
-              </p>
+              <p className="text-sm text-slate-500 mb-6">Popular banco com clientes e processos fictícios.</p>
               <button 
                 onClick={handleSeedData} 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/40 flex items-center justify-center gap-2"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-sm transition-all"
               >
-                <Database size={16} /> POPULAR DADOS FAKES
+                POPULAR DADOS FAKES
               </button>
             </div>
 
-            <div className="bg-slate-900 p-8 rounded-2xl border border-red-500/20 shadow-2xl shadow-red-950/20">
+            <div className="bg-slate-900 p-8 rounded-2xl border border-red-500/20 shadow-2xl">
               <h3 className="font-bold text-lg mb-4 text-white flex items-center gap-2">
-                <Trash2 size={20} className="text-red-500" /> Hard Reset do Banco
+                <Trash2 size={20} className="text-red-500" /> Hard Reset
               </h3>
-              <p className="text-sm text-slate-500 mb-6 leading-relaxed">
-                Apaga absolutamente todos os registros associados a este escritório. Use com cautela extrema no ambiente de produção.
-              </p>
+              <p className="text-sm text-slate-500 mb-6">Limpar todos os dados deste escritório.</p>
               <button 
                 onClick={() => { if(isConfirmingClear) handleClearData(); else setIsConfirmingClear(true); }} 
-                className={`w-full py-4 rounded-xl font-bold text-sm transition-all border ${isConfirmingClear ? "bg-red-600 border-red-500 text-white shadow-lg shadow-red-900/40" : "bg-slate-950 border-slate-800 text-red-500 hover:border-red-500/50"}`}
+                className={`w-full py-4 rounded-xl font-bold text-sm transition-all border ${isConfirmingClear ? "bg-red-600 text-white" : "bg-slate-950 text-red-500 border-slate-800"}`}
               >
-                {isConfirmingClear ? "CONFIRMAR EXCLUSÃO IMEDIATA" : "LIMPAR BANCO DE DADOS"}
+                {isConfirmingClear ? "CONFIRMAR EXCLUSÃO" : "LIMPAR BANCO"}
               </button>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 p-8 rounded-2xl border border-slate-800 space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Database className="text-blue-500" />
+                <h3 className="font-bold text-lg text-white">Configuração Global (Persistência)</h3>
+              </div>
+              <button 
+                onClick={handleSaveConfigs}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg"
+              >
+                <Save size={16} /> Salvar e Reiniciar
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Supabase URL</label>
+                <input 
+                  type="text"
+                  value={sbUrl}
+                  onChange={(e) => setSbUrl(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-600 outline-none transition-all text-sm font-mono"
+                  placeholder="https://sua-url.supabase.co"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Anon Key</label>
+                <input 
+                  type="password"
+                  value={sbKey}
+                  onChange={(e) => setSbKey(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-600 outline-none transition-all text-sm font-mono"
+                  placeholder="eyJhbGciOiJIUzI1Ni..."
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-xs font-bold text-purple-500 uppercase block mb-2">Gemini API Key (Inteligência Artificial)</label>
+                <input 
+                  type="password"
+                  value={geminiKey}
+                  onChange={(e) => setGeminiKey(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-purple-600 outline-none transition-all text-sm font-mono"
+                  placeholder="AIzaSy..."
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -190,13 +260,12 @@ const AppContent: React.FC = () => {
       <main className="ml-64 flex-1 p-8 overflow-y-auto h-screen custom-scrollbar">
         {dataLoading && (
           <div className="fixed top-4 right-8 z-[300] bg-blue-600 text-white px-4 py-2 rounded-full text-xs font-bold animate-pulse shadow-lg">
-            Sincronizando dados...
+            Sincronizando...
           </div>
         )}
         {renderContent()}
       </main>
       
-      {/* Exibição Global de Notificação */}
       {notification && (
         <Toast 
           message={notification.message} 
