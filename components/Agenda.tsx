@@ -27,10 +27,18 @@ const parseDate = (dateStr: string) => {
 
 const isUrl = (str: string) => /^https?:\/\//.test(str);
 
-const EventCard = ({ event, isOverdue, onViewProcess }: { 
-  event: AgendaEvent; 
+// Define EventCardProps interface to properly handle React props including 'key'
+interface EventCardProps {
+  event: AgendaEvent;
   isOverdue?: boolean;
   onViewProcess?: (processId: string) => void;
+}
+
+// Fix: Use React.FC to properly handle component props and avoid 'key' prop error during mapping
+const EventCard: React.FC<EventCardProps> = ({ 
+  event, 
+  isOverdue, 
+  onViewProcess 
 }) => (
   <div className={`bg-slate-900 border rounded-xl p-4 hover:border-slate-600 transition-all group shadow-sm flex items-start gap-4 
     ${isOverdue ? 'border-red-900/50 bg-red-900/5' : 'border-slate-800'}`}>
@@ -100,12 +108,22 @@ const EventCard = ({ event, isOverdue, onViewProcess }: {
   </div>
 );
 
-const Section = ({ title, events, color, isOverdue, onViewProcess }: { 
-  title: string; 
-  events: AgendaEvent[]; 
-  color: string; 
+// Define SectionProps interface for better type safety
+interface SectionProps {
+  title: string;
+  events: AgendaEvent[];
+  color: string;
   isOverdue?: boolean;
   onViewProcess?: (processId: string) => void;
+}
+
+// Fix: Use React.FC to properly handle component props
+const Section: React.FC<SectionProps> = ({ 
+  title, 
+  events, 
+  color, 
+  isOverdue, 
+  onViewProcess 
 }) => {
   if (events.length === 0) return null;
   return (

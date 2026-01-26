@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { AppUser, Office, UserRole } from '../types';
 
 interface AuthContextType {
@@ -22,9 +22,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [office, setOffice] = useState<Office | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const ensureDevOfficeExists = async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      // Usar upsert para garantir que o escritório exista sem dar erro se já existir
+      await supabase.from('offices').upsert([{ 
+        id: DEV_OFFICE_ID, 
+        name: 'Escritório de Desenvolvimento' 
+      }], { onConflict: 'id' });
+    } catch (e) {
+      console.error("Erro ao garantir escritório dev:", e);
+    }
+  };
+
   const refreshSession = async () => {
     const isDev = localStorage.getItem('juzk_dev_mode') === 'true';
+    
     if (isDev) {
+      await ensureDevOfficeExists();
       setUser({
         id: DEV_USER_ID,
         email: 'dev@juzk.ia',
@@ -43,7 +58,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data: { session } } = await (supabase.auth as any).getSession();
       if (session) {
-        // Busca perfil estendido
         const { data: profile } = await supabase
           .from('profiles')
           .select('*, offices(*)')
@@ -60,7 +74,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           setOffice(profile.offices);
         } else {
-          // Fallback se perfil ainda não existe (após signup)
           setUser({
             id: session.user.id,
             email: session.user.email!,

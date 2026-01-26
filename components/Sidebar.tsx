@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { LayoutDashboard, Scale, FileText, BrainCircuit, DollarSign, Settings, Users, Briefcase, BookOpen, Lock, Calendar, Database, Building2, Terminal } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { UserRole } from '../types';
 
 interface SidebarProps {
   currentView: string;
@@ -12,7 +13,9 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) => {
   const { office, user } = useAuth();
   const [dbStatus, setDbStatus] = useState<'online' | 'offline' | 'checking'>('checking');
-  const isDev = user?.id === 'dev-user-master';
+  
+  const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN;
+  const isOfficeAdmin = user?.role === UserRole.OFFICE_ADMIN;
 
   useEffect(() => {
     const checkConn = async () => {
@@ -35,7 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
     { id: 'documents', label: 'GED', icon: FileText, isDevelopment: true },
     { id: 'ai-tools', label: 'IA Jurídica', icon: BrainCircuit },
     { id: 'finance', label: 'Financeiro', icon: DollarSign },
-    { id: 'admin', label: 'Administrativo', icon: Briefcase, isDevelopment: !isDev },
+    { id: 'admin', label: 'Administrativo', icon: Briefcase, isHidden: !isSuperAdmin && !isOfficeAdmin },
   ];
 
   return (
@@ -58,7 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
-        {menuItems.map((item: any) => {
+        {menuItems.filter(i => !i.isHidden).map((item: any) => {
           const Icon = item.icon;
           const isActive = currentView === item.id;
           const isDisabled = item.isDevelopment;
@@ -90,8 +93,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
           );
         })}
 
-        {/* Menu Developer condicional */}
-        {isDev && (
+        {isSuperAdmin && (
           <button
             onClick={() => onChangeView('developer')}
             className={`w-full group relative flex flex-col items-start gap-1 px-4 py-3 rounded-xl transition-all duration-300 mt-4 border border-dashed border-blue-500/30 ${
@@ -102,7 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
           >
             <div className="flex items-center gap-3">
               <Terminal size={20} />
-              <span className="font-bold tracking-tight">Developer</span>
+              <span className="font-bold tracking-tight">Developer Mode</span>
             </div>
           </button>
         )}

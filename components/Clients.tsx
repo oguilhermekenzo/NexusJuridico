@@ -43,7 +43,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ label, value, options, 
           {selectedOption?.icon && <span className="shrink-0">{selectedOption.icon}</span>}
           <span className={`font-medium truncate ${compact ? 'text-xs md:text-sm' : 'text-sm'}`}>{selectedOption?.label}</span>
         </div>
-        <ChevronDown size={16} className={`text-slate-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180 text-blue-500' : ''}`} />
+        <ChevronDown size={16} className={`text-slate-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {error && <p className="text-red-500 text-xs mt-1 ml-1 font-medium animate-fade-in">{error}</p>}
 
@@ -182,16 +182,16 @@ export const Clients: React.FC<ClientsProps> = ({ showNotify }) => {
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
     
     try {
-      if (editingClient.id && !editingClient.id.startsWith('demo-')) {
+      if (editingClient.id && !editingClient.id.toString().includes('.')) {
         await updateClient(editingClient as Cliente);
         showNotify("Cliente atualizado!");
       } else {
-        await addClient({ ...editingClient, id: Date.now().toString() } as Cliente);
+        await addClient({ ...editingClient });
         showNotify("Cliente cadastrado com sucesso!");
       }
       setIsModalOpen(false);
-    } catch (e) {
-      showNotify("Erro ao salvar cliente.", "error");
+    } catch (e: any) {
+      showNotify(`Falha ao salvar: ${e.message}`, "error");
     }
   };
 
@@ -305,7 +305,7 @@ export const Clients: React.FC<ClientsProps> = ({ showNotify }) => {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={() => setIsModalOpen(false)}>
           <div className="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl animate-scale-in border border-slate-800 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
              <div className="p-6 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-slate-900 z-10">
-               <h2 className="text-xl font-bold text-white">{editingClient.id ? 'Editar Cliente' : 'Novo Cliente'}</h2>
+               <h2 className="text-xl font-bold text-white">{editingClient.id && !editingClient.id.toString().includes('.') ? 'Editar Cliente' : 'Novo Cliente'}</h2>
                <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white transition-colors"><X size={20}/></button>
              </div>
              <div className="p-6 space-y-5">
